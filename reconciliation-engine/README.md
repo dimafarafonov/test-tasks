@@ -63,30 +63,30 @@ Not stated in the brief or examples. Reasoned. We decide.
 
 | # | Case | Options | Decision | Why | Status |
 |---|---|---|---|---|---|
-| I1 | `ours.csv` / `theirs.csv` is header-only | valid empty side / error | | | OPEN |
-| I2 | Shape detection | by header | | | OPEN |
-| I3 | One side simple, other side extended | compare common fields / error | | | OPEN |
+| I1 | `ours.csv` / `theirs.csv` is header-only | valid empty side / error | valid empty side (0 records) | Same rule the brief gives for header-only `manual.csv` | DECIDED |
+| I2 | Shape detection | by header | by header: all 5 extra cols → extended; none → simple; some → simple + `skip` issue (extra cols ignored); core col missing → `fatal` | Core fields are enough to match; warning shows what was ignored | DECIDED |
+| I3 | One side simple, other side extended | compare common fields / error | compare common fields only | Simple; no crash | DECIDED |
 | I4 | Timestamp precision varies (`.5Z`, no fraction, µs) | normalize to ms / keep full precision | keep full precision (`temporal-polyfill`, ns) | Brief allows sub-second; no precision loss; standard API, no own parser | DECIDED |
 | I5 | Amount math | decimal type / integer cents | decimal type (`decimal.js`) | Exact; built-in parse, format, rounding; readable | DECIDED |
-| I6 | Memo with comma / quotes / newline | standard CSV parser | | | OPEN |
+| I6 | Memo with comma / quotes / newline | standard CSV parser | standard CSV parser (`csv-parse`) | Handles quotes, commas, newlines correctly | DECIDED |
 | I7 | Duplicate ID in one file | error / keep first | keep first; skip later rows (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
 | I8 | Bad row (missing field, bad number) | error exit / skip + warn | skip row (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
-| I9 | Extra unknown columns | ignore / echo / error | | | OPEN |
+| I9 | Extra unknown columns | ignore / echo / error | ignore; not echoed | Brief defines the fields; extra columns are noise | DECIDED |
 
 ### as_of
 
 | # | Case | Options | Decision | Why | Status |
 |---|---|---|---|---|---|
-| A1 | Record after `as_of` | fully absent from report / listed somewhere | | | OPEN |
-| A2 | `as_of` before all records | empty report, exit 0 | | | OPEN |
-| A3 | `as_of` without milliseconds | accept, output `.000Z` | | | OPEN |
+| A1 | Record after `as_of` | fully absent from report / listed somewhere | fully absent | Brief: run "only considers records whose timestamp <= T" | DECIDED |
+| A2 | `as_of` before all records | empty report, exit 0 | empty report, exit 0 | Valid run with no data | DECIDED |
+| A3 | `as_of` precision varies | accept, output `.000Z` | accept no fraction and 1–9 fraction digits + `Z`; output always `.sssZ` | Brief writes `[.sss]`; cover edge cases; examples echo `.sss` | DECIDED |
 
 ### Manual
 
 | # | Case | Options | Decision | Why | Status |
 |---|---|---|---|---|---|
 | M1 | Pin ID does not exist | ignore / error / skip + warn | skip pin (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
-| M2 | Pinned record after `as_of` | ignore pin / keep pin | | | OPEN |
+| M2 | Pinned record after `as_of` | ignore pin / keep pin | drop pin (`skip` issue) | `as_of` filter runs first; record does not exist in this run | DECIDED |
 | M3 | Same ID in two different pins | first wins / error / skip both | first wins; skip later pins (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
 | M4 | Identical pin row twice | dedupe / error | dedupe; skip duplicate (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
 
@@ -94,38 +94,52 @@ Not stated in the brief or examples. Reasoned. We decide.
 
 | # | Case | Options | Decision | Why | Status |
 |---|---|---|---|---|---|
-| E1 | Extended shape: party fields required for exact? | yes / no | | X6 suggests yes | OPEN |
+| E1 | Extended shape: party fields required for exact? | yes / no | yes (`party_email`, `currency` equal) | X6: o-003/t-103 same amount + time, unmatched | DECIDED |
 | E2 | `currency` is a party-identity field? | yes / no | yes | Follows R3: different currency = different leg; operator can pin | DECIDED |
-| E3 | Many candidates, same amount + timestamp | lowest id first / other | | | OPEN |
+| E3 | Many candidates, same amount + timestamp | lowest id first / other | pair by `ours_id`, then `theirs_id` ascending | Deterministic; easy to explain | DECIDED |
 
 ### Rule-based
 
 | # | Case | Options | Decision | Why | Status |
 |---|---|---|---|---|---|
-| R1 | Amount threshold value, inclusive? | 0.01 / other | | X5 | OPEN |
-| R2 | Time threshold value, inclusive? | 0.5 s / 1 s / other | | X5 | OPEN |
+| R1 | Amount threshold value, inclusive? | 0.01 / other | ≤ 0.02, inclusive (config) | Goal: more auto matches. Ex 3 accepts 0.01; ex 4 0.03 is fuzzy, not rule-based → 0.02 is max | DECIDED |
+| R2 | Time threshold value, inclusive? | 0.5 s / 1 s / other | ≤ 2 s, inclusive (config) | Covers network + processing delay, clock drift, retries; below batch / settlement lag | DECIDED |
 | R3 | Different currency, same value via `fx_rate` | convert / no convert | no convert; currency is identity field; `fx_rate` not used in matching | Trade recon matches in same currency; false match worse than unmatched; ex 3 t-102 (fx-drift) still matches via amount threshold. Conversion → next day | DECIDED |
-| R4 | `quantity` / `price_per_share` used? | yes / no | | | OPEN |
-| R5 | Many candidates (tie-break) | closest diff first / id order / optimal assignment | | | OPEN |
+| R4 | `quantity` / `price_per_share` used? | yes / no | no | Not party fields; `amount` already = quantity × price × fx_rate | DECIDED |
+| R5 | Many candidates (tie-break) | closest diff first / id order / optimal assignment | closest first: \|amount diff\|, then \|time diff\|, then `ours_id`, `theirs_id` | Most likely pair wins; deterministic | DECIDED |
 
 ### Fuzzy (optional)
 
 | # | Case | Options | Decision | Why | Status |
 |---|---|---|---|---|---|
-| F1 | Implement at all | yes / cut | | | OPEN |
-| F2 | Algorithm | Damerau-Levenshtein / Levenshtein / Jaro-Winkler | | | OPEN |
-| F3 | Similarity threshold | normalized `dist / max_len` value? | | | OPEN |
-| F4 | Amount / time limits for fuzzy | value? | | X8: 0.03 | OPEN |
-| F5 | Case / whitespace normalize | yes / no | | | OPEN |
-| F6 | Memo empty on one side | no fuzzy / use email only | | | OPEN |
+| F1 | Implement at all | yes / cut | yes, last (after manual / exact / rule-based work) | Ex 4 tests it; brief: "expert solutions implement it" | DECIDED |
+| F2 | Algorithm | Damerau-Levenshtein / Levenshtein / Jaro-Winkler | Damerau-Levenshtein | Also counts swapped letters, a common typo | DECIDED |
+| F3 | Similarity threshold | normalized `dist / max_len` value? | `1 − dist / max_len ≥ 0.75` (config) | Allows 1 typo in 4 letters; "Cofee Shop" = 0.91 | DECIDED |
+| F4 | Amount / time limits for fuzzy | value? | amount ≤ 0.10, time ≤ 2 s (config) | Ex 4 needs 0.03; covers small fees; text similarity guards false matches | DECIDED |
+| F5 | Case / whitespace normalize | yes / no | yes: lowercase, trim, collapse spaces | Case and spaces are not real differences | DECIDED |
+| F6 | Memo empty on one side | no fuzzy / use email only | empty memo = no memo signal | Empty value proves nothing | DECIDED |
+
+Extended shape: fuzzy also accepts a `party_email` typo (same F3 threshold). `currency` must be equal.
+
+### Thresholds config
+
+One config object in `core`. CLI uses defaults. Real values come from past confirmed pairs + finance policy (next day).
+
+| Key | Default | Source |
+|---|---|---|
+| `ruleAmount` | 0.02 | R1 |
+| `ruleTimeSeconds` | 2 | R2 |
+| `fuzzySimilarity` | 0.75 | F3 |
+| `fuzzyAmount` | 0.10 | F4 |
+| `fuzzyTimeSeconds` | 2 | F4 |
 
 ### Output
 
 | # | Case | Options | Decision | Why | Status |
 |---|---|---|---|---|---|
-| O1 | Negative zero (`-0.00`) | never print | | | OPEN |
-| O2 | Timestamp echo format in unmatched | input as-is / normalized `.sssZ` | | | OPEN |
-| O3 | Diff rounding for sub-ms timestamps | round / truncate | | | OPEN |
+| O1 | Negative zero (`-0.00`) | never print | never; print `0.00` | Standard money format | DECIDED |
+| O2 | Timestamp echo format in unmatched | input as-is / normalized `.sssZ` | input as-is | Brief: "echo each record's input fields" | DECIDED |
+| O3 | Diff rounding for sub-ms timestamps | round / truncate | round half away from zero, 3 decimals | Standard; same for both signs | DECIDED |
 
 ### Stack
 
