@@ -6,6 +6,8 @@
 - The user decides. Claude does what the user says.
 - Claude can suggest. Suggestions are chat text only (pseudo code, short notes). No file changes for suggestions.
 - Read `conversation.md` before each reply. Follow it.
+- Read `context.md` at chat start. Update it at the end of each session.
+- `README.md` holds Requirements and Exceptions (decision log).
 
 ## Task source
 
