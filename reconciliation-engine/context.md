@@ -6,7 +6,8 @@ Update at the end of each session.
 
 - Phase: understanding + decisions. No code yet.
 - Stack (CLI only): Node.js >= 24 + TypeScript. Monorepo in this folder. `temporal-polyfill` (timestamps), `decimal.js` (amounts). Backend / frontend stack open, may differ.
-- `README.md`: Requirements (Q1–Q19, X1–X8) + Exceptions. DECIDED: I4, I5, E2, R3, S1–S4. Rest `OPEN`.
+- `README.md`: Requirements (Q1–Q19, X1–X8) + Exceptions. DECIDED: I4, I5, I7, I8, M1, M3, M4, E2, R3, S1–S4, C1, C2. Rest `OPEN`.
+- Not-happy path: generic Issue model (`fatal` → exit 1 listing all; `skip` → item skipped, exit 0, shown in console). See README "Issue model".
 
 ## Key findings
 

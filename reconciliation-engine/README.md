@@ -69,8 +69,8 @@ Not stated in the brief or examples. Reasoned. We decide.
 | I4 | Timestamp precision varies (`.5Z`, no fraction, µs) | normalize to ms / keep full precision | keep full precision (`temporal-polyfill`, ns) | Brief allows sub-second; no precision loss; standard API, no own parser | DECIDED |
 | I5 | Amount math | decimal type / integer cents | decimal type (`decimal.js`) | Exact; built-in parse, format, rounding; readable | DECIDED |
 | I6 | Memo with comma / quotes / newline | standard CSV parser | | | OPEN |
-| I7 | Duplicate ID in one file | error / keep first | | | OPEN |
-| I8 | Bad row (missing field, bad number) | error exit / skip + warn | | | OPEN |
+| I7 | Duplicate ID in one file | error / keep first | keep first; skip later rows (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
+| I8 | Bad row (missing field, bad number) | error exit / skip + warn | skip row (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
 | I9 | Extra unknown columns | ignore / echo / error | | | OPEN |
 
 ### as_of
@@ -85,10 +85,10 @@ Not stated in the brief or examples. Reasoned. We decide.
 
 | # | Case | Options | Decision | Why | Status |
 |---|---|---|---|---|---|
-| M1 | Pin ID does not exist | ignore / error / skip + warn | | | OPEN |
+| M1 | Pin ID does not exist | ignore / error / skip + warn | skip pin (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
 | M2 | Pinned record after `as_of` | ignore pin / keep pin | | | OPEN |
-| M3 | Same ID in two different pins | first wins / error / skip both | | | OPEN |
-| M4 | Identical pin row twice | dedupe / error | | | OPEN |
+| M3 | Same ID in two different pins | first wins / error / skip both | first wins; skip later pins (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
+| M4 | Identical pin row twice | dedupe / error | dedupe; skip duplicate (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
 
 ### Exact
 
@@ -142,5 +142,24 @@ Scope: CLI only. Backend / frontend stack is open and may differ.
 
 | # | Case | Options | Decision | Why | Status |
 |---|---|---|---|---|---|
-| C1 | Missing file / bad args | exit non-zero + message | | | OPEN |
-| C2 | Bad `--as-of` format | exit non-zero | | | OPEN |
+| C1 | Missing file / bad args | exit non-zero + message | `fatal` issue; check all inputs, list all problems, exit 1 | User fixes all in one pass | DECIDED |
+| C2 | Bad `--as-of` format | exit non-zero | `fatal` issue; listed with C1, exit 1 | Same as C1 | DECIDED |
+
+### Issue model (not-happy path)
+
+Generic. Code collects problems; it does not throw at the first one. Entry point (CLI now, backend later) shows them.
+
+```
+Issue { code: "I7" | "M1" | "C1" ..., level: "fatal" | "skip",
+        source: "ours.csv" | "--as-of" | ..., row?, id?, message }
+```
+
+| Level | Meaning | Run | Exit |
+|---|---|---|---|
+| `fatal` | Input unusable (C1, C2) | stop after all checks | 1 |
+| `skip` | One item bad (I7, I8, M1, M3, M4) | continue without item | 0 |
+
+- `code` = README ID. New case = new code, no new path.
+- Core returns `{ report, issues }`. Core never prints.
+- CLI prints issues to console. Backend later returns them as JSON; frontend shows them.
+- `report.json` schema unchanged (hidden suite compares it).
