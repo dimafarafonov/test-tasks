@@ -66,8 +66,8 @@ Not stated in the brief or examples. Reasoned. We decide.
 | I1 | `ours.csv` / `theirs.csv` is header-only | valid empty side / error | | | OPEN |
 | I2 | Shape detection | by header | | | OPEN |
 | I3 | One side simple, other side extended | compare common fields / error | | | OPEN |
-| I4 | Timestamp precision varies (`.5Z`, no fraction, µs) | normalize to ms / keep full precision | | | OPEN |
-| I5 | Amount math | decimal type / integer cents | | | OPEN |
+| I4 | Timestamp precision varies (`.5Z`, no fraction, µs) | normalize to ms / keep full precision | keep full precision (`temporal-polyfill`, ns) | Brief allows sub-second; no precision loss; standard API, no own parser | DECIDED |
+| I5 | Amount math | decimal type / integer cents | decimal type (`decimal.js`) | Exact; built-in parse, format, rounding; readable | DECIDED |
 | I6 | Memo with comma / quotes / newline | standard CSV parser | | | OPEN |
 | I7 | Duplicate ID in one file | error / keep first | | | OPEN |
 | I8 | Bad row (missing field, bad number) | error exit / skip + warn | | | OPEN |
@@ -95,7 +95,7 @@ Not stated in the brief or examples. Reasoned. We decide.
 | # | Case | Options | Decision | Why | Status |
 |---|---|---|---|---|---|
 | E1 | Extended shape: party fields required for exact? | yes / no | | X6 suggests yes | OPEN |
-| E2 | `currency` is a party-identity field? | yes / no | | X6 ambiguous (email and currency both differ) | OPEN |
+| E2 | `currency` is a party-identity field? | yes / no | yes | Follows R3: different currency = different leg; operator can pin | DECIDED |
 | E3 | Many candidates, same amount + timestamp | lowest id first / other | | | OPEN |
 
 ### Rule-based
@@ -104,7 +104,7 @@ Not stated in the brief or examples. Reasoned. We decide.
 |---|---|---|---|---|---|
 | R1 | Amount threshold value, inclusive? | 0.01 / other | | X5 | OPEN |
 | R2 | Time threshold value, inclusive? | 0.5 s / 1 s / other | | X5 | OPEN |
-| R3 | Different currency, same value via `fx_rate` | convert / no convert | | | OPEN |
+| R3 | Different currency, same value via `fx_rate` | convert / no convert | no convert; currency is identity field; `fx_rate` not used in matching | Trade recon matches in same currency; false match worse than unmatched; ex 3 t-102 (fx-drift) still matches via amount threshold. Conversion → next day | DECIDED |
 | R4 | `quantity` / `price_per_share` used? | yes / no | | | OPEN |
 | R5 | Many candidates (tie-break) | closest diff first / id order / optimal assignment | | | OPEN |
 
@@ -126,6 +126,17 @@ Not stated in the brief or examples. Reasoned. We decide.
 | O1 | Negative zero (`-0.00`) | never print | | | OPEN |
 | O2 | Timestamp echo format in unmatched | input as-is / normalized `.sssZ` | | | OPEN |
 | O3 | Diff rounding for sub-ms timestamps | round / truncate | | | OPEN |
+
+### Stack
+
+Scope: CLI only. Backend / frontend stack is open and may differ.
+
+| # | Case | Options | Decision | Why | Status |
+|---|---|---|---|---|---|
+| S1 | Language / runtime (CLI) | Node.js + TypeScript / other | Node.js >= 24 + TypeScript | Node 24 runs `.ts` without build; good CSV / CLI libs; can share types with a later TS backend / frontend | DECIDED |
+| S2 | Node version guard | `engines` only / `engines` + startup check | `engines: >=24` + startup check | npm only warns; check gives clear error, exit 1 | DECIDED |
+| S3 | Repo structure | monorepo / single package / separate repos | monorepo in this folder (`packages/core`, `apps/cli`, later `apps/api`, `apps/web`) | One pure engine reused by all entry points | DECIDED |
+| S4 | CLI entry | `bin` field / wrapper script | `package.json` `bin: { recon }` | Puts `recon` on PATH via `npm link` / `npm i -g .` | DECIDED |
 
 ### CLI
 

@@ -39,8 +39,13 @@ Each record matches at most once. Only records with `timestamp <= as_of`.
 
 ### TBD
 
-- Language / stack:
 - Thresholds (amount, time):
-- Extended shape handling (currency, quantity, price_per_share, fx_rate, party_email):
+- Extended shape handling (quantity, price_per_share, party_email):
 - Viewer (CLI pretty-print / web UI):
-- Architecture:
+- Backend / frontend stack: open. May differ from CLI stack.
+
+### Decided (CLI only — see README `Stack`)
+
+- Language / stack: Node.js >= 24 + TypeScript. `temporal-polyfill` (timestamps), `decimal.js` (amounts).
+- Architecture: monorepo in this folder. `packages/core` (pure engine), `apps/cli`. Later `apps/api`, `apps/web`.
+- Currency: identity field. No FX conversion. `fx_rate` not used in matching (README R3, E2).
