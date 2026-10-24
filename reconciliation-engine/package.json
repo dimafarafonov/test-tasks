@@ -17,7 +17,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "node --test",
     "examples": "node scripts/run-examples.ts",
-    "generate:example": "node scripts/generate-example.ts"
+    "generate:example": "node scripts/generate-example.ts",
+    "doctor": "node scripts/doctor.js"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
