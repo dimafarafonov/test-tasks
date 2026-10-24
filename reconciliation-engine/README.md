@@ -72,6 +72,7 @@ Not stated in the brief or examples. Reasoned. We decide.
 | I7 | Duplicate ID in one file | error / keep first | keep first; skip later rows (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
 | I8 | Bad row (missing field, bad number) | error exit / skip + warn | skip row (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
 | I9 | Extra unknown columns | ignore / echo / error | ignore; not echoed | Brief defines the fields; extra columns are noise | DECIDED |
+| I10 | Record timestamp with offset (`+02:00`) / empty `currency`, `party_email` | accept / skip row | accept (any ISO offset via Temporal; empty string is a value) | Not a broken row; matching still works on the parsed value | DECIDED |
 
 ### as_of
 
@@ -118,6 +119,8 @@ Not stated in the brief or examples. Reasoned. We decide.
 | F4 | Amount / time limits for fuzzy | value? | amount ≤ 0.10, time ≤ 2 s (config) | Ex 4 needs 0.03; covers small fees; text similarity guards false matches | DECIDED |
 | F5 | Case / whitespace normalize | yes / no | yes: lowercase, trim, collapse spaces | Case and spaces are not real differences | DECIDED |
 | F6 | Memo empty on one side | no fuzzy / use email only | empty memo = no memo signal | Empty value proves nothing | DECIDED |
+| F7 | Fuzzy rule (exact form) | memo only / memo + email / email only | memo similar (both non-empty) **and**, when both sides extended, `party_email` similar + `currency` equal | Literal reading of F3 + "also accepts a `party_email` typo" | DECIDED |
+| F8 | Many fuzzy candidates | best text first / R5 order | best text first (lowest similarity of checked fields), then R5 order | Text is the signal of this tier | DECIDED |
 
 Extended shape: fuzzy also accepts a `party_email` typo (same F3 threshold). `currency` must be equal.
 

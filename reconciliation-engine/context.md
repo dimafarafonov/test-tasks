@@ -4,7 +4,7 @@ Update at the end of each session.
 
 ## Status
 
-- Phase: coding. Scaffold done (2026-10-24).
+- Phase: coding. Engine + CLI done, all 4 examples pass, 25 tests green (2026-10-24). Nothing committed yet.
 - Stack (CLI only): Node.js >= 24 + TypeScript. Monorepo in this folder. `temporal-polyfill` (timestamps), `decimal.js` (amounts). Backend / frontend stack open, may differ.
 - `README.md`: Requirements (Q1–Q19, X1–X8) + Exceptions. All Exceptions `DECIDED`. Thresholds in README "Thresholds config".
 - Goal for thresholds: more automatic matches (loosest values the examples allow).
@@ -33,12 +33,15 @@ Update at the end of each session.
 
 ## Next step
 
-- User installs Node 24 (local was 22.14; bin guard rejects it).
-- Build order: ~~scaffold~~ → core (parse, as_of, manual, exact, rule-based) → CLI + Issue output → examples check → fuzzy → viewer.
+- Node 24.22.1 via nvm; `recon` linked under it.
+- Build order: ~~scaffold~~ → ~~core~~ → ~~CLI + Issue output~~ → ~~examples check~~ → ~~fuzzy~~ → viewer (stack TBD) → README install / architecture / next day / AI usage.
 
 ## Code layout
 
 - Root `package.json`: npm workspaces (S5), `engines >=24`, `bin recon → apps/cli/bin/recon.js`.
-- `apps/cli/bin/recon.js`: plain JS, version check, then imports `src/main.ts` (stub).
-- `packages/core/src`: `config.ts` (thresholds as decimal strings), `issue.ts`, `index.ts`. Deps: decimal.js, temporal-polyfill, csv-parse.
+- `apps/cli/bin/recon.js`: plain JS, version check, then imports `src/main.ts`.
+- `apps/cli/src/main.ts`: parseArgs, read files, collect C1/C2, call core, write JSON, print issues to stderr + summary to stdout.
+- `packages/core/src`: `csv.ts` (parse sides + manual, I2/I6/I7/I8), `asOf.ts` (A3/C2), `match.ts` (generic `runTier`: score all free pairs, sort, greedy; exact/rule/fuzzy scorers), `reconcile.ts` (pins M1–M4, tiers, report), `similarity.ts` (OSA Damerau-Levenshtein), `decimal.ts`, `config.ts`, `issue.ts`, `types.ts`.
+- Tests: `packages/core/test/*.test.ts`, `apps/cli/test/examples.test.ts` (runs bin on `examples/`, copied from candidate folder).
 - `npm run typecheck` (TS, noEmit). `npm test` = `node --test`.
+- New README rows: I10, F7, F8.

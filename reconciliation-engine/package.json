@@ -15,7 +15,8 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "test": "node --test"
+    "test": "node --test",
+    "examples": "bash scripts/run-examples.sh"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
