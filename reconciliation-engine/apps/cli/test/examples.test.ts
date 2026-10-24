@@ -11,7 +11,7 @@ const bin = join(root, 'apps/cli/bin/recon.js');
 const examples = join(root, 'examples');
 
 for (const name of readdirSync(examples, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name)) {
-  test(`example ${name}`, () => {
+  test(`example ${name}: report equals expected_report.json`, () => {
     const dir = join(examples, name);
     const output = join(mkdtempSync(join(tmpdir(), 'recon-')), 'report.json');
     execFileSync(process.execPath, [
@@ -28,7 +28,7 @@ for (const name of readdirSync(examples, { withFileTypes: true }).filter((e) => 
   });
 }
 
-test('fatal issues: all listed, exit 1', () => {
+test('bad arguments: all problems are listed at once, exit code 1 (README C1, C2)', () => {
   try {
     execFileSync(process.execPath, [bin, 'run', '--ours', 'nope.csv', '--as-of', 'yesterday'], { stdio: 'pipe' });
     assert.fail('expected exit 1');
@@ -42,7 +42,7 @@ test('fatal issues: all listed, exit 1', () => {
   }
 });
 
-test('as_of file: one value, else C2', () => {
+test('as_of file: one value, spaces and blank lines ignored; empty, many lines or bad format stop the run (README C2, C3)', () => {
   assert.deepEqual(parseAsOfFile('a', '\uFEFF\n 2026-05-01T23:59:59.999Z \r\n\n'), { ok: true, value: '2026-05-01T23:59:59.999Z' });
   for (const text of ['', '\n \n', '2026-05-01T00:00:00Z\n2026-05-02T00:00:00Z', '2026-05-01']) {
     const result = parseAsOfFile('a', text);
@@ -50,7 +50,7 @@ test('as_of file: one value, else C2', () => {
   }
 });
 
-test('C3: --as-of value and file give the same report', () => {
+test('--as-of accepts a value or a file path; both give the same report (README C3)', () => {
   const dir = join(examples, 'example_2_with_manual');
   const reports = [readFileSync(join(dir, 'as_of.txt'), 'utf8').trim(), join(dir, 'as_of.txt')].map((asOf) => {
     const output = join(mkdtempSync(join(tmpdir(), 'recon-')), 'report.json');
