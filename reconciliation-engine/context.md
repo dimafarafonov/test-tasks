@@ -2,13 +2,20 @@
 
 Update at the end of each session.
 
-## Status
+## Status (2026-10-24)
 
-- Phase: coding. Engine + CLI done, all 4 examples pass, 25 tests green (2026-10-24). Nothing committed yet.
-- Stack (CLI only): Node.js >= 24 + TypeScript. Monorepo in this folder. `temporal-polyfill` (timestamps), `decimal.js` (amounts). Backend / frontend stack open, may differ.
-- `README.md`: Requirements (Q1–Q19, X1–X8) + Exceptions. All Exceptions `DECIDED`. Thresholds in README "Thresholds config".
-- Goal for thresholds: more automatic matches (loosest values the examples allow).
-- Not-happy path: generic Issue model (`fatal` → exit 1 listing all; `skip` → item skipped, exit 0, shown in console). See README "Issue model".
+- Phase: coding. Engine (manual, exact, rule_based, fuzzy) + CLI done. Nothing committed yet.
+- All examples pass (4 given + generated `example_5_manual_1k`, `example_big` 10k). 30 tests green. Typecheck clean.
+- Stack (CLI only): Node.js >= 24 + TypeScript, npm workspaces. `temporal-polyfill`, `decimal.js`, `csv-parse`. Backend / frontend stack open.
+- `README.md`: Requirements (Q1–Q19, X1–X8) + Exceptions, all `DECIDED`. Thresholds in README "Thresholds config".
+- Not-happy path: Issue model (`fatal` → exit 1 listing all; `skip` → item skipped, exit 0, printed to stderr).
+
+## Next step
+
+- Viewer (stack TBD): CLI pretty-print minimum, web UI recommended. User was offered `recon view REPORT.json`; not decided.
+- Option: 1k example with rule_based + fuzzy rows too (offered, not decided).
+- README final sections: install / run, architecture + why, next day, AI usage.
+- Next day list so far: perf (index candidates by amount/time; now O(n·m), 10k rows ≈ 15 s — user said "not now"), FX conversion (R3).
 
 ## Key findings
 
@@ -16,35 +23,34 @@ Update at the end of each session.
 - `as_of` = filter (`timestamp <= as_of`), not run date.
 - `manual.csv` = operator-forced pairs. Run first; consumes both records.
 - Unmatched echo omits `memo` (examples 2, 3).
-- Example 3: o-003/t-103 same amount + time, different email + currency → unmatched. Both now blocking (E2 = currency is identity).
-- Example 3 data follows `amount = quantity × price_per_share × fx_rate` (all 8 records). t-102 "fx-drift": fx 1.000001 → amount +0.01, matched rule-based.
-- Examples use only ms timestamps (3 fraction digits).
-- Rule-based in examples: amount diff 0.01, time diff 0.5 s. Exact thresholds unknown.
-- Fuzzy (optional): string distance on memo / party_email. Candidate: Damerau-Levenshtein, normalized by length.
+- Example 3: o-003/t-103 same amount + time, different email + currency → unmatched (E1, E2).
+- Example 3 data follows `amount = quantity × price_per_share × fx_rate`. t-102 "fx-drift" matched rule-based.
 - Hidden tests may show more exceptions than listed.
 
 ## User decisions
 
-- Talk style: see `conversation.md`. User wants fewer words.
-- No code until user says so.
-- README split: Requirements vs Exceptions.
-- Stack + architecture: see README `Stack` (S1–S4).
-- R3: no FX conversion. Different currency → no auto-match; operator can pin. Conversion → "next day" in README.
-
-## Next step
-
-- Node 24.22.1 via nvm; `recon` linked under it.
-- Build order: ~~scaffold~~ → ~~core~~ → ~~CLI + Issue output~~ → ~~examples check~~ → ~~fuzzy~~ → viewer (stack TBD) → README install / architecture / next day / AI usage.
+- Talk style: see `conversation.md`. Very short answers.
+- README split: Requirements vs Exceptions. New behavior → new README row.
+- Stack + architecture: README `Stack` (S1–S5).
+- R3: no FX conversion. Conversion → next day.
+- C3: `--as-of` takes a value or a path to a file with one value (file parsed as a whole).
+- C4: `recon run DIR` short form (DIR/ours.csv, theirs.csv, manual.csv, as_of.txt → DIR/report.json; flags override).
+- CLI prints run time after each run (not in report.json).
+- Test names: plain words + `(README code)`, readable without README or AI.
+- `npm run doctor` for setup checks.
 
 ## Code layout
 
-- Root `package.json`: npm workspaces (S5), `engines >=24`, `bin recon → apps/cli/bin/recon.js`.
-- `apps/cli/bin/recon.js`: plain JS, version check, then imports `src/main.ts`.
-- `apps/cli/src/main.ts`: parseArgs, read files, collect C1/C2, call core, write JSON, print issues to stderr + summary to stdout.
-- `packages/core/src`: `csv.ts` (parse sides + manual, I2/I6/I7/I8), `asOf.ts` (A3/C2), `match.ts` (generic `runTier`: score all free pairs, sort, greedy; exact/rule/fuzzy scorers), `reconcile.ts` (pins M1–M4, tiers, report), `similarity.ts` (OSA Damerau-Levenshtein), `decimal.ts`, `config.ts`, `issue.ts`, `types.ts`.
-- Tests: `packages/core/test/*.test.ts`, `apps/cli/test/examples.test.ts` (runs bin on `examples/`, copied from candidate folder).
-- `npm run typecheck` (TS, noEmit). `npm test` = `node --test`.
-- New README rows: I10, F7, F8, C3 (`--as-of` value or file), C4 (`recon run DIR`).
-- CLI prints run time after each run. `npm run examples [-- NAME ...]` runs examples; `npm run generate:example -- ROWS [NAME]` builds big examples (expected report from data design).
-- Test names: plain words + `(README code)`.
-- Perf: matching compares every pair (O(n·m)). 10k rows/side ≈ 15 s. User: "not now" → next day item (index by amount/time).
+- Root `package.json`: workspaces, `engines >=24`, `bin recon → apps/cli/bin/recon.js`. Scripts: `test`, `typecheck`, `examples`, `generate:example`, `doctor`.
+- `apps/cli/bin/recon.js`: plain JS, Node version check, then imports `src/main.ts`.
+- `apps/cli/src/main.ts`: parseArgs, `run DIR` defaults, read files, collect C1/C2, call core, write JSON, issues → stderr, summary + time → stdout.
+- `apps/cli/src/asOfFile.ts`: `parseAsOfFile` (BOM, blank lines, one value, C2).
+- `packages/core/src`: `csv.ts` (I2/I6/I7/I8), `asOf.ts` (A3/C2), `match.ts` (generic `runTier`: score all free pairs, sort, greedy), `reconcile.ts` (pins M1–M4, tiers, report), `similarity.ts` (OSA Damerau-Levenshtein), `decimal.ts`, `config.ts`, `issue.ts`, `types.ts`.
+- Tests: `packages/core/test/*.test.ts`, `apps/cli/test/examples.test.ts` (runs bin on every `examples/*/`).
+- `scripts/run-examples.ts` (`npm run examples [-- NAME ...]`, output `out/`), `scripts/generate-example.ts` (`npm run generate:example -- ROWS [NAME]`; expected report from data design, fixed seed; as_of = end of last record's day), `scripts/doctor.js`.
+- `.gitignore`: `node_modules/`, `out/`, `examples/*/report.json`, `.DS_Store`.
+
+## Environment notes
+
+- Node 24.22.1 via nvm; `recon` linked under it (`npm link`).
+- New terminals in VS Code / Claude app showed Node 22: apps keep the PATH from their start; nvm keeps an nvm Node already on PATH. Fix: restart app (Cmd+Q) or `nvm use default --silent` in `~/.zshrc` after nvm loads. nvm default is now 24.

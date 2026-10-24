@@ -2,6 +2,24 @@
 
 > Draft. Install / run / architecture / AI usage sections come later.
 
+## Commands (draft)
+
+| Command | What it does |
+|---|---|
+| `npm install && npm link` | Install deps; put `recon` on PATH (run with Node 24 active) |
+| `recon run --ours F --theirs F --manual F --as-of T --output F` | Brief contract. `--as-of` = value or file (C3) |
+| `recon run DIR` | Short form (C4): files from `DIR`, writes `DIR/report.json` |
+| `npm test` | All tests, incl. every `examples/*/` |
+| `npm run typecheck` | TypeScript check |
+| `npm run examples [-- NAME ...]` | Run examples, compare with `expected_report.json`, show run time |
+| `npm run generate:example -- ROWS [NAME]` | Build a large example (80% exact, 10% manual, 10% unmatched) |
+| `npm run doctor` | Check Node version, nvm default, deps, `recon` on PATH |
+
+### Troubleshooting
+
+- `recon: command not found` → run `npm run doctor`. Usual cause: Node 22 active. `nvm use`, then `npm link`.
+- New VS Code / IDE terminal still on old Node → the app keeps the PATH from its start. Quit it (Cmd+Q) and reopen, or add `nvm use default --silent` to `~/.zshrc` after nvm loads.
+
 ## How we decide
 
 Use this order. Stop at the first source that gives an answer.

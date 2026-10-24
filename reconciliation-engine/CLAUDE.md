@@ -39,7 +39,7 @@ Each record matches at most once. Only records with `timestamp <= as_of`.
 
 ### TBD
 
-- Viewer (CLI pretty-print / web UI):
+- Viewer (CLI pretty-print / web UI): not decided. Next step.
 - Backend / frontend stack: open. May differ from CLI stack.
 
 ### Decided (CLI only — see README `Stack`)
@@ -50,3 +50,4 @@ Each record matches at most once. Only records with `timestamp <= as_of`.
 - Thresholds (config, README "Thresholds config"): rule amount ≤ 0.02, time ≤ 2 s; fuzzy similarity ≥ 0.75, amount ≤ 0.10, time ≤ 2 s.
 - Extended shape: `party_email` + `currency` must be equal (exact, rule-based); `quantity`, `price_per_share` not used.
 - Not-happy path: Issue model (`fatal` / `skip`), README "Issue model".
+- CLI extras: `--as-of` value or file (C3), `recon run DIR` (C4), run time printed. Scripts: `examples`, `generate:example`, `doctor` (README "Commands").
