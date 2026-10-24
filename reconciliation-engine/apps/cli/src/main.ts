@@ -12,6 +12,7 @@ const FILE_OPTIONS = ['ours', 'theirs', 'manual'] as const;
 
 // Exit 0 on success (skip issues allowed), 1 on any fatal issue (README Issue model).
 export async function main(argv: string[]): Promise<number> {
+  const started = performance.now();
   let values: Record<string, string | undefined>;
   let positionals: string[];
   try {
@@ -70,7 +71,8 @@ export async function main(argv: string[]): Promise<number> {
   }
 
   printIssues(result.issues);
-  process.stdout.write(`${summaryLine(result.report)} → ${values.output}\n`);
+  const ms = (performance.now() - started).toFixed(1);
+  process.stdout.write(`${summaryLine(result.report)} → ${values.output} (${ms} ms)\n`);
   return 0;
 }
 

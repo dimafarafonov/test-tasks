@@ -1,4 +1,5 @@
-// Runs recon on every examples/*/ folder. Reports go to out/<example>.json.
+// Runs recon on every examples/*/ folder, or only the ones named:
+//   node scripts/run-examples.ts [EXAMPLE_NAME ...] Reports go to out/<example>.json.
 // Each report is compared with expected_report.json (PASS / FAIL). Exit 1 on any FAIL.
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
@@ -12,7 +13,14 @@ const bin = join(root, 'apps/cli/bin/recon.js');
 mkdirSync(outDir, { recursive: true });
 
 let failed = 0;
-const names = readdirSync(examples, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+const all = readdirSync(examples, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
+const wanted = process.argv.slice(2);
+const unknown = wanted.filter((name) => !all.includes(name));
+if (unknown.length > 0) {
+  console.error(`unknown example(s): ${unknown.join(', ')}\navailable: ${all.join(', ')}`);
+  process.exit(1);
+}
+const names = wanted.length > 0 ? wanted : all;
 
 for (const name of names) {
   const dir = join(examples, name);
