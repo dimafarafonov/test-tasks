@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -59,4 +59,15 @@ test('--as-of accepts a value or a file path; both give the same report (README 
     return readFileSync(output, 'utf8');
   });
   assert.equal(reports[0], reports[1]);
+});
+
+test('recon run DIR reads the input files from DIR and writes DIR/report.json (README C4)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'recon-'));
+  const source = join(examples, 'example_2_with_manual');
+  for (const file of ['ours.csv', 'theirs.csv', 'manual.csv', 'as_of.txt']) {
+    writeFileSync(join(dir, file), readFileSync(join(source, file)));
+  }
+  execFileSync(process.execPath, [bin, 'run', dir], { stdio: 'pipe' });
+  const actual = JSON.parse(readFileSync(join(dir, 'report.json'), 'utf8'));
+  assert.deepStrictEqual(actual, JSON.parse(readFileSync(join(source, 'expected_report.json'), 'utf8')));
 });

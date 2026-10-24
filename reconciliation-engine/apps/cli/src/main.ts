@@ -1,12 +1,22 @@
 import { readFile, writeFile } from 'node:fs/promises';
-import { basename } from 'node:path';
+import { basename, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { parseAsOf, reconcile, type CsvSource, type Issue, type Report } from '@recon/core';
 import { parseAsOfFile, type AsOfFileResult } from './asOfFile.ts';
 
 const USAGE =
   'usage: recon run --ours OURS.csv --theirs THEIRS.csv --manual MANUAL.csv ' +
-  '--as-of (YYYY-MM-DDTHH:MM:SS[.sss]Z | AS_OF.txt) --output REPORT.json';
+  '--as-of (YYYY-MM-DDTHH:MM:SS[.sss]Z | AS_OF.txt) --output REPORT.json\n' +
+  '       recon run DIR   (DIR/ours.csv, theirs.csv, manual.csv, as_of.txt → DIR/report.json; flags override)';
+
+// C4: file names inside DIR for `recon run DIR`.
+const DIR_DEFAULTS = {
+  ours: 'ours.csv',
+  theirs: 'theirs.csv',
+  manual: 'manual.csv',
+  'as-of': 'as_of.txt',
+  output: 'report.json',
+} as const;
 
 const FILE_OPTIONS = ['ours', 'theirs', 'manual'] as const;
 
@@ -33,8 +43,12 @@ export async function main(argv: string[]): Promise<number> {
 
   // C1, C2: check every input first, report all problems in one pass.
   const issues: Issue[] = [];
-  if (positionals.length !== 1 || positionals[0] !== 'run') {
-    issues.push(cliIssue('args', `expected command "run", got "${positionals.join(' ')}"`));
+  const [command, dir, ...extra] = positionals;
+  if (command !== 'run' || extra.length > 0) {
+    issues.push(cliIssue('args', `expected "run" or "run DIR", got "${positionals.join(' ')}"`));
+  }
+  if (dir) {
+    for (const [name, file] of Object.entries(DIR_DEFAULTS)) values[name] ??= join(dir, file);
   }
   for (const name of [...FILE_OPTIONS, 'as-of', 'output'] as const) {
     if (!values[name]) issues.push(cliIssue(`--${name}`, 'missing'));

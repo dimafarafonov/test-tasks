@@ -16,7 +16,6 @@ const unmatchedCount = Math.floor(rows / 10);
 const exactCount = rows - pinCount - unmatchedCount;
 
 const BASE_MS = Date.parse('2026-04-01T00:00:00.000Z');
-const AS_OF = '2026-04-01T23:59:59.999Z';
 const MEMOS = ['coffee', 'book', 'lunch', 'gear', 'subscription', 'refund', 'taxi', 'hotel'];
 
 // Amounts in cents and times in ms: plain integer math, no engine code.
@@ -50,6 +49,14 @@ for (let i = theirsIds.length - 1; i > 0; i--) {
 let nextTheirs = 0;
 const takeTheirsId = () => theirsIds[nextTheirs++]!;
 
+// Amount ranges per group never overlap, at any size: each starts above the last one.
+const GAP = 1_000_000; // 10 000.00, far above every match limit
+const exactBase = 100;
+const pinOursBase = exactBase + exactCount * 137 + GAP;
+const pinTheirsBase = pinOursBase + pinCount * 111 + GAP;
+const unmatchedOursBase = pinTheirsBase + pinCount * 111 + GAP;
+const unmatchedTheirsBase = unmatchedOursBase + unmatchedCount * 113 + GAP;
+
 const ours: Rec[] = [];
 const theirs: Rec[] = [];
 const exact: [Rec, Rec][] = [];
@@ -59,7 +66,7 @@ const nextMs = () => BASE_MS + slot++ * 30_000;
 
 for (let i = 0; i < exactCount; i++) {
   const ms = nextMs();
-  const cents = 100 + i * 137; // steps of 1.37: far above the 0.10 fuzzy limit
+  const cents = exactBase + i * 137; // steps of 1.37: far above the 0.10 fuzzy limit
   const o = { id: `o-${pad(ours.length + 1)}`, cents, ms, memo: MEMOS[i % MEMOS.length]! };
   const t = { id: takeTheirsId(), cents, ms, memo: '' };
   ours.push(o);
@@ -70,8 +77,8 @@ for (let i = 0; i < exactCount; i++) {
 // Pins: different amount and time, so only the manual tier can pair them (Q8).
 for (let i = 0; i < pinCount; i++) {
   const ms = nextMs();
-  const o = { id: `o-${pad(ours.length + 1)}`, cents: 2_000_000 + i * 111, ms, memo: 'refund' };
-  const t = { id: takeTheirsId(), cents: 3_000_000 + i * 111, ms: ms + 4 * 3600_000, memo: 'settlement' };
+  const o = { id: `o-${pad(ours.length + 1)}`, cents: pinOursBase + i * 111, ms, memo: 'refund' };
+  const t = { id: takeTheirsId(), cents: pinTheirsBase + i * 111, ms: ms + 4 * 3600_000, memo: 'settlement' };
   ours.push(o);
   theirs.push(t);
   pins.push([o, t]);
@@ -81,13 +88,18 @@ for (let i = 0; i < pinCount; i++) {
 const unmatchedOurs: Rec[] = [];
 const unmatchedTheirs: Rec[] = [];
 for (let i = 0; i < unmatchedCount; i++) {
-  const o = { id: `o-${pad(ours.length + 1)}`, cents: 5_000_000 + i * 113, ms: nextMs(), memo: 'gear' };
-  const t = { id: takeTheirsId(), cents: 9_000_000 + i * 113, ms: nextMs(), memo: '' };
+  const o = { id: `o-${pad(ours.length + 1)}`, cents: unmatchedOursBase + i * 113, ms: nextMs(), memo: 'gear' };
+  const t = { id: takeTheirsId(), cents: unmatchedTheirsBase + i * 113, ms: nextMs(), memo: '' };
   ours.push(o);
   theirs.push(t);
   unmatchedOurs.push(o);
   unmatchedTheirs.push(t);
 }
+
+// as_of: end of the UTC day of the latest record, so every record takes part.
+const DAY_MS = 86_400_000;
+const latest = Math.max(...ours.map((r) => r.ms), ...theirs.map((r) => r.ms));
+const AS_OF = iso(Math.floor(latest / DAY_MS) * DAY_MS + DAY_MS - 1);
 
 const byId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 const csv = (records: Rec[]) =>

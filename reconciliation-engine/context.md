@@ -44,4 +44,7 @@ Update at the end of each session.
 - `packages/core/src`: `csv.ts` (parse sides + manual, I2/I6/I7/I8), `asOf.ts` (A3/C2), `match.ts` (generic `runTier`: score all free pairs, sort, greedy; exact/rule/fuzzy scorers), `reconcile.ts` (pins M1–M4, tiers, report), `similarity.ts` (OSA Damerau-Levenshtein), `decimal.ts`, `config.ts`, `issue.ts`, `types.ts`.
 - Tests: `packages/core/test/*.test.ts`, `apps/cli/test/examples.test.ts` (runs bin on `examples/`, copied from candidate folder).
 - `npm run typecheck` (TS, noEmit). `npm test` = `node --test`.
-- New README rows: I10, F7, F8.
+- New README rows: I10, F7, F8, C3 (`--as-of` value or file), C4 (`recon run DIR`).
+- CLI prints run time after each run. `npm run examples [-- NAME ...]` runs examples; `npm run generate:example -- ROWS [NAME]` builds big examples (expected report from data design).
+- Test names: plain words + `(README code)`.
+- Perf: matching compares every pair (O(n·m)). 10k rows/side ≈ 15 s. User: "not now" → next day item (index by amount/time).

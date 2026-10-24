@@ -163,6 +163,7 @@ Scope: CLI only. Backend / frontend stack is open and may differ.
 | C1 | Missing file / bad args | exit non-zero + message | `fatal` issue; check all inputs, list all problems, exit 1 | User fixes all in one pass | DECIDED |
 | C2 | Bad `--as-of` format | exit non-zero | `fatal` issue; listed with C1, exit 1 | Same as C1 | DECIDED |
 | C3 | `--as-of` given as a file | value only / value or file path | value or path to a file with one value (BOM, blank lines, spaces ignored; more lines → `fatal` C2). Valid value wins; else read as file | User wants both. Brief contract (value) still works | DECIDED |
+| C4 | Short form for a folder | flags only / `recon run DIR` | `recon run DIR`: reads `DIR/ours.csv`, `theirs.csv`, `manual.csv`, `as_of.txt`, writes `DIR/report.json`; any flag overrides its default | User wants one short command per example. Brief contract (flags) still works | DECIDED |
 
 ### Issue model (not-happy path)
 
