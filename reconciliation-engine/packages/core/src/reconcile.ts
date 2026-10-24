@@ -3,7 +3,7 @@ import { parseAsOf } from './asOf.ts';
 import { DEFAULT_THRESHOLDS, type Thresholds } from './config.ts';
 import { parseManual, parseSide, type CsvSource } from './csv.ts';
 import type { Issue } from './issue.ts';
-import { compareIds, runTier, scoreExact, scoreFuzzy, scoreRuleBased, toMatch } from './match.ts';
+import { compareIds, runExact, runTier, scoreFuzzy, scoreRuleBased, toMatch } from './match.ts';
 import type { EchoRecord, Match, MatchKind, Report, TxRecord } from './types.ts';
 
 export interface ReconcileInput {
@@ -51,9 +51,11 @@ export function reconcile(input: ReconcileInput, options: ReconcileOptions = {})
   };
 
   consume(applyPins(input.manual.name, manual.pins, ours.records, theirs.records, freeOurs, freeTheirs, issues));
-  consume(runTier('exact', freeOurs, freeTheirs, scoreExact));
-  consume(runTier('rule_based', freeOurs, freeTheirs, scoreRuleBased(thresholds)));
-  if (options.fuzzy !== false) consume(runTier('fuzzy', freeOurs, freeTheirs, scoreFuzzy(thresholds)));
+  consume(runExact(freeOurs, freeTheirs));
+  consume(runTier('rule_based', freeOurs, freeTheirs, scoreRuleBased(thresholds), thresholds.ruleTimeSeconds));
+  if (options.fuzzy !== false) {
+    consume(runTier('fuzzy', freeOurs, freeTheirs, scoreFuzzy(thresholds), thresholds.fuzzyTimeSeconds));
+  }
 
   // Q17
   matches.sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || compareIds(a.ours_id, b.ours_id));

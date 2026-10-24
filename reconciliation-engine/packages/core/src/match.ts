@@ -60,18 +60,76 @@ function compareKeys(a: Candidate['keys'], b: Candidate['keys']): number {
   return 0;
 }
 
+const byId = (a: TxRecord, b: TxRecord) => compareIds(a.id, b.id);
+
+// Same text for the same value: "100.0" and "100.00" → "100", "-0" → "0".
+const amountKey = (amount: D): string => (amount.isZero() ? '0' : amount.toString());
+
+// Exact tier (Q9, E1, I3, E3). Equal records get equal labels, so a Map finds the partner
+// without comparing every pair. Same result as runTier with scoreExact.
+export function runExact(ours: TxRecord[], theirs: TxRecord[]): Match[] {
+  // I3: party fields count only when both sides carry them. One CSV has one shape (Q6),
+  // so a side is all extended or all simple; a mixed side falls back to pair checks.
+  const party = ours.every((r) => r.ext) && theirs.every((r) => r.ext);
+  const noParty = ours.every((r) => !r.ext) || theirs.every((r) => !r.ext);
+  if (!party && !noParty) return runTier('exact', ours, theirs, scoreExact);
+
+  const label = (r: TxRecord): string =>
+    JSON.stringify([amountKey(r.amount), r.instant.epochNanoseconds.toString(), ...(party ? [r.ext!.currency, r.ext!.partyEmail] : [])]);
+
+  // label → theirs records with that label, in id order.
+  const boxes = new Map<string, TxRecord[]>();
+  for (const t of [...theirs].sort(byId)) {
+    const key = label(t);
+    const box = boxes.get(key);
+    if (box) box.push(t);
+    else boxes.set(key, [t]);
+  }
+
+  // E3: ours in id order, each takes the smallest free theirs id.
+  const matches: Match[] = [];
+  for (const o of [...ours].sort(byId)) {
+    const t = boxes.get(label(o))?.shift();
+    if (t) matches.push(toMatch('exact', o, t));
+  }
+  return matches;
+}
+
 // One tier: score every free pair, best first, take greedily. Each record matches once (Q13).
+// windowSeconds: score only pairs at most this far apart in time. Pairs outside the window
+// must score null, so the result is the same as scoring every pair.
 export function runTier(
   kind: MatchKind,
   ours: TxRecord[],
   theirs: TxRecord[],
   score: (o: TxRecord, t: TxRecord) => Candidate['keys'] | null,
+  windowSeconds?: string,
 ): Match[] {
   const candidates: Candidate[] = [];
-  for (const o of ours) {
-    for (const t of theirs) {
-      const keys = score(o, t);
-      if (keys) candidates.push({ ours: o, theirs: t, keys: [...keys, o.id, t.id] });
+  const add = (o: TxRecord, t: TxRecord) => {
+    const keys = score(o, t);
+    if (keys) candidates.push({ ours: o, theirs: t, keys: [...keys, o.id, t.id] });
+  };
+
+  if (windowSeconds === undefined) {
+    for (const o of ours) for (const t of theirs) add(o, t);
+  } else {
+    // Theirs sorted by time. For each ours: binary search to the window start, walk to its end.
+    const windowNs = BigInt(secondsToNanos(windowSeconds).toFixed(0, D.ROUND_DOWN));
+    const byTime = theirs
+      .map((t) => ({ t, ns: t.instant.epochNanoseconds }))
+      .sort((a, b) => (a.ns < b.ns ? -1 : a.ns > b.ns ? 1 : 0));
+    for (const o of ours) {
+      const ns = o.instant.epochNanoseconds;
+      const start = ns - windowNs;
+      let low = 0;
+      let high = byTime.length;
+      while (low < high) {
+        const mid = (low + high) >> 1;
+        if (byTime[mid]!.ns < start) low = mid + 1;
+        else high = mid;
+      }
+      for (let i = low; i < byTime.length && byTime[i]!.ns <= ns + windowNs; i++) add(o, byTime[i]!.t);
     }
   }
   candidates.sort((a, b) => compareKeys(a.keys, b.keys));

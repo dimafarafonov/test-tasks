@@ -70,6 +70,22 @@ test('timestamps with different fraction digits are compared as the same moment 
   assert.deepEqual(kinds(r), ['exact:o1-t1']);
 });
 
+test('amounts with different decimal digits are the same value: 100.0 and 100.00 match exact, -0.00 and 0 too', () => {
+  const r = run(
+    ['o1,100.0,2026-05-01T10:00:00Z,', 'o2,-0.00,2026-05-01T11:00:00Z,'],
+    ['t1,100.00,2026-05-01T10:00:00Z,', 't2,0,2026-05-01T11:00:00Z,'],
+  );
+  assert.deepEqual(kinds(r), ['exact:o1-t1', 'exact:o2-t2']);
+});
+
+test('rule-based: theirs 2 s earlier or 2 s later both match; the time window includes both edges (README R2)', () => {
+  const r = run(
+    ['o1,10.00,2026-05-01T10:00:00Z,', 'o2,10.00,2026-05-01T11:00:00Z,'],
+    ['t1,10.01,2026-05-01T09:59:58Z,', 't2,10.01,2026-05-01T11:00:02Z,', 't3,10.01,2026-05-01T12:00:02.001Z,'],
+  );
+  assert.deepEqual(kinds(r), ['rule_based:o1-t1', 'rule_based:o2-t2']);
+});
+
 test('diffs are ours minus theirs, never "-0.00", sub-millisecond rounds half away from zero (README Q16, O1, O3)', () => {
   const r = run(['o1,-5.00,2026-05-01T10:00:00.0005Z,'], ['t1,-5.00,2026-05-01T10:00:00Z,']);
   assert.deepEqual(r.report!.matches[0], {

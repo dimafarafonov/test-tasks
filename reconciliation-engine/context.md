@@ -5,7 +5,7 @@ Update at the end of each session.
 ## Status (2026-10-24)
 
 - Phase: coding. Engine (manual, exact, rule_based, fuzzy) + CLI done. Nothing committed yet.
-- All examples pass (4 given + generated `example_5_manual_1k`, `example_big` 10k). 30 tests green. Typecheck clean.
+- All examples pass (4 given + generated `example_5_manual_1k`, `example_big` 10k). 32 tests green. Typecheck clean.
 - Stack (CLI only): Node.js >= 24 + TypeScript, npm workspaces. `temporal-polyfill`, `decimal.js`, `csv-parse`. Backend / frontend stack open.
 - `README.md`: Requirements (Q1–Q19, X1–X8) + Exceptions, all `DECIDED`. Thresholds in README "Thresholds config".
 - Not-happy path: Issue model (`fatal` → exit 1 listing all; `skip` → item skipped, exit 0, printed to stderr).
@@ -15,7 +15,8 @@ Update at the end of each session.
 - Viewer (stack TBD): CLI pretty-print minimum, web UI recommended. User was offered `recon view REPORT.json`; not decided.
 - Option: 1k example with rule_based + fuzzy rows too (offered, not decided).
 - README final sections: install / run, architecture + why, next day, AI usage.
-- Next day list so far: perf (index candidates by amount/time; now O(n·m), 10k rows ≈ 15 s — user said "not now"), FX conversion (R3).
+- Perf done (A + B): exact tier = Map by label; rule_based / fuzzy = time window. example_big 15.1 s → 0.2 s. Checked: same results as old pair-by-pair code (900 random dense runs, 0 diffs).
+- Next day list so far: perf C (amount / time as bigint at parse; helps dense data in one time window), FX conversion (R3).
 
 ## Key findings
 
@@ -45,7 +46,7 @@ Update at the end of each session.
 - `apps/cli/bin/recon.js`: plain JS, Node version check, then imports `src/main.ts`.
 - `apps/cli/src/main.ts`: parseArgs, `run DIR` defaults, read files, collect C1/C2, call core, write JSON, issues → stderr, summary + time → stdout.
 - `apps/cli/src/asOfFile.ts`: `parseAsOfFile` (BOM, blank lines, one value, C2).
-- `packages/core/src`: `csv.ts` (I2/I6/I7/I8), `asOf.ts` (A3/C2), `match.ts` (generic `runTier`: score all free pairs, sort, greedy), `reconcile.ts` (pins M1–M4, tiers, report), `similarity.ts` (OSA Damerau-Levenshtein), `decimal.ts`, `config.ts`, `issue.ts`, `types.ts`.
+- `packages/core/src`: `csv.ts` (I2/I6/I7/I8), `asOf.ts` (A3/C2), `match.ts` (`runExact`: Map label = amount|epochNanos|currency|email (party only when both sides extended), E3 id order; `runTier`: score pairs in time window (binary search on theirs sorted by time), sort, greedy), `reconcile.ts` (pins M1–M4, tiers, report), `similarity.ts` (OSA Damerau-Levenshtein), `decimal.ts`, `config.ts`, `issue.ts`, `types.ts`.
 - Tests: `packages/core/test/*.test.ts`, `apps/cli/test/examples.test.ts` (runs bin on every `examples/*/`).
 - `scripts/run-examples.ts` (`npm run examples [-- NAME ...]`, output `out/`), `scripts/generate-example.ts` (`npm run generate:example -- ROWS [NAME]`; expected report from data design, fixed seed; as_of = end of last record's day), `scripts/doctor.js`.
 - `.gitignore`: `node_modules/`, `out/`, `examples/*/report.json`, `.DS_Store`.
