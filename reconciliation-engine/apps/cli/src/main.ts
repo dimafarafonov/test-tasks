@@ -2,10 +2,11 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { parseArgs } from 'node:util';
 import { parseAsOf, reconcile, type CsvSource, type Issue, type Report } from '@recon/core';
+import { parseAsOfFile, type AsOfFileResult } from './asOfFile.ts';
 
 const USAGE =
   'usage: recon run --ours OURS.csv --theirs THEIRS.csv --manual MANUAL.csv ' +
-  '--as-of YYYY-MM-DDTHH:MM:SS[.sss]Z --output REPORT.json';
+  '--as-of (YYYY-MM-DDTHH:MM:SS[.sss]Z | AS_OF.txt) --output REPORT.json';
 
 const FILE_OPTIONS = ['ours', 'theirs', 'manual'] as const;
 
@@ -49,10 +50,11 @@ export async function main(argv: string[]): Promise<number> {
     }
   }
 
-  const asOf = values['as-of'];
-  if (asOf) {
-    const parsed = parseAsOf(asOf);
-    if (!parsed.ok) issues.push(parsed.issue);
+  let asOf: string | undefined;
+  if (values['as-of']) {
+    const resolved = await resolveAsOf(values['as-of']);
+    if (resolved.ok) asOf = resolved.value;
+    else issues.push(resolved.issue);
   }
   if (issues.length > 0 || !sources.ours || !sources.theirs || !sources.manual || !asOf || !values.output) {
     return fail(issues);
@@ -70,6 +72,23 @@ export async function main(argv: string[]): Promise<number> {
   printIssues(result.issues);
   process.stdout.write(`${summaryLine(result.report)} → ${values.output}\n`);
   return 0;
+}
+
+// C3: --as-of is a value, or a path to a file with one value. A valid value wins.
+async function resolveAsOf(arg: string): Promise<AsOfFileResult> {
+  const parsed = parseAsOf(arg);
+  if (parsed.ok) return { ok: true, value: arg };
+
+  let text: string;
+  try {
+    text = await readFile(arg, 'utf8');
+  } catch (error) {
+    return {
+      ok: false,
+      issue: { ...parsed.issue, message: `${parsed.issue.message}; also not a readable file (${errorCode(error)})` },
+    };
+  }
+  return parseAsOfFile(arg, text);
 }
 
 function cliIssue(source: string, message: string): Issue {
