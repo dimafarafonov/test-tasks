@@ -151,6 +151,7 @@ Scope: CLI only. Backend / frontend stack is open and may differ.
 | S2 | Node version guard | `engines` only / `engines` + startup check | `engines: >=24` + startup check | npm only warns; check gives clear error, exit 1 | DECIDED |
 | S3 | Repo structure | monorepo / single package / separate repos | monorepo in this folder (`packages/core`, `apps/cli`, later `apps/api`, `apps/web`) | One pure engine reused by all entry points | DECIDED |
 | S4 | CLI entry | `bin` field / wrapper script | `package.json` `bin: { recon }` | Puts `recon` on PATH via `npm link` / `npm i -g .` | DECIDED |
+| S5 | Workspace tool | npm workspaces / pnpm | npm workspaces | Ships with Node; graders need no extra install | DECIDED |
 
 ### CLI
 

@@ -4,7 +4,7 @@ Update at the end of each session.
 
 ## Status
 
-- Phase: understanding + decisions. No code yet.
+- Phase: coding. Scaffold done (2026-10-24).
 - Stack (CLI only): Node.js >= 24 + TypeScript. Monorepo in this folder. `temporal-polyfill` (timestamps), `decimal.js` (amounts). Backend / frontend stack open, may differ.
 - `README.md`: Requirements (Q1–Q19, X1–X8) + Exceptions. All Exceptions `DECIDED`. Thresholds in README "Thresholds config".
 - Goal for thresholds: more automatic matches (loosest values the examples allow).
@@ -33,5 +33,12 @@ Update at the end of each session.
 
 ## Next step
 
-- All decisions done. Wait for user "go" to write code.
-- Build order: scaffold (monorepo, bin, engines, version check) → core (parse, as_of, manual, exact, rule-based) → CLI + Issue output → examples check → fuzzy → viewer.
+- User installs Node 24 (local was 22.14; bin guard rejects it).
+- Build order: ~~scaffold~~ → core (parse, as_of, manual, exact, rule-based) → CLI + Issue output → examples check → fuzzy → viewer.
+
+## Code layout
+
+- Root `package.json`: npm workspaces (S5), `engines >=24`, `bin recon → apps/cli/bin/recon.js`.
+- `apps/cli/bin/recon.js`: plain JS, version check, then imports `src/main.ts` (stub).
+- `packages/core/src`: `config.ts` (thresholds as decimal strings), `issue.ts`, `index.ts`. Deps: decimal.js, temporal-polyfill, csv-parse.
+- `npm run typecheck` (TS, noEmit). `npm test` = `node --test`.
