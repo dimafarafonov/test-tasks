@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Plain JS on purpose: runs on any Node, so old versions get a clear message (README S2).
+// Plain JS on purpose: runs on any Node, so old versions get a clear message (DECISIONS S2).
 const REQUIRED_MAJOR = 24;
 const major = Number(process.versions.node.split('.')[0]);
 

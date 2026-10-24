@@ -28,7 +28,7 @@ for (const name of readdirSync(examples, { withFileTypes: true }).filter((e) => 
   });
 }
 
-test('bad arguments: all problems are listed at once, exit code 1 (README C1, C2)', () => {
+test('bad arguments: all problems are listed at once, exit code 1 (DECISIONS C1, C2)', () => {
   try {
     execFileSync(process.execPath, [bin, 'run', '--ours', 'nope.csv', '--as-of', 'yesterday'], { stdio: 'pipe' });
     assert.fail('expected exit 1');
@@ -42,7 +42,7 @@ test('bad arguments: all problems are listed at once, exit code 1 (README C1, C2
   }
 });
 
-test('as_of file: one value, spaces and blank lines ignored; empty, many lines or bad format stop the run (README C2, C3)', () => {
+test('as_of file: one value, spaces and blank lines ignored; empty, many lines or bad format stop the run (DECISIONS C2, C3)', () => {
   assert.deepEqual(parseAsOfFile('a', '\uFEFF\n 2026-05-01T23:59:59.999Z \r\n\n'), { ok: true, value: '2026-05-01T23:59:59.999Z' });
   for (const text of ['', '\n \n', '2026-05-01T00:00:00Z\n2026-05-02T00:00:00Z', '2026-05-01']) {
     const result = parseAsOfFile('a', text);
@@ -50,7 +50,7 @@ test('as_of file: one value, spaces and blank lines ignored; empty, many lines o
   }
 });
 
-test('--as-of accepts a value or a file path; both give the same report (README C3)', () => {
+test('--as-of accepts a value or a file path; both give the same report (DECISIONS C3)', () => {
   const dir = join(examples, 'example_2_with_manual');
   const reports = [readFileSync(join(dir, 'as_of.txt'), 'utf8').trim(), join(dir, 'as_of.txt')].map((asOf) => {
     const output = join(mkdtempSync(join(tmpdir(), 'recon-')), 'report.json');
@@ -61,7 +61,7 @@ test('--as-of accepts a value or a file path; both give the same report (README 
   assert.equal(reports[0], reports[1]);
 });
 
-test('recon run DIR reads the input files from DIR and writes DIR/report.json (README C4)', () => {
+test('recon run DIR reads the input files from DIR and writes DIR/report.json (DECISIONS C4)', () => {
   const dir = mkdtempSync(join(tmpdir(), 'recon-'));
   const source = join(examples, 'example_2_with_manual');
   for (const file of ['ours.csv', 'theirs.csv', 'manual.csv', 'as_of.txt']) {

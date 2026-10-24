@@ -7,12 +7,12 @@
 - Claude can suggest. Suggestions are chat text only (pseudo code, short notes). No file changes for suggestions.
 - Read `conversation.md` before each reply. Follow it.
 - Read `context.md` at chat start. Update it at the end of each session.
-- `README.md` holds Requirements and Exceptions (decision log).
+- `README.md` holds base usage only. `DECISIONS.md` holds Requirements and Exceptions (decision log).
 
 ## Task source
 
-- Brief: `/Users/dimafarafonov/work/candidate/ASSIGNMENT.md`
-- Examples: `/Users/dimafarafonov/work/candidate/examples/`
+- Brief: `../../candidate/ASSIGNMENT.md`
+- Examples: `../../candidate/examples/`
 - Output code: this directory.
 
 ## Project spec
@@ -42,12 +42,12 @@ Each record matches at most once. Only records with `timestamp <= as_of`.
 - Viewer (CLI pretty-print / web UI): not decided. Next step.
 - Backend / frontend stack: open. May differ from CLI stack.
 
-### Decided (CLI only — see README `Stack`)
+### Decided (CLI only — see DECISIONS `Stack`)
 
 - Language / stack: Node.js >= 24 + TypeScript. `temporal-polyfill` (timestamps), `decimal.js` (amounts).
 - Architecture: monorepo in this folder. `packages/core` (pure engine), `apps/cli`. Later `apps/api`, `apps/web`.
-- Currency: identity field. No FX conversion. `fx_rate` not used in matching (README R3, E2).
-- Thresholds (config, README "Thresholds config"): rule amount ≤ 0.02, time ≤ 2 s; fuzzy similarity ≥ 0.75, amount ≤ 0.10, time ≤ 2 s.
+- Currency: identity field. No FX conversion. `fx_rate` not used in matching (DECISIONS R3, E2).
+- Thresholds (config, DECISIONS "Thresholds config"): rule amount ≤ 0.02, time ≤ 2 s; fuzzy similarity ≥ 0.75, amount ≤ 0.10, time ≤ 2 s.
 - Extended shape: `party_email` + `currency` must be equal (exact, rule-based); `quantity`, `price_per_share` not used.
-- Not-happy path: Issue model (`fatal` / `skip`), README "Issue model".
+- Not-happy path: Issue model (`fatal` / `skip`), DECISIONS "Issue model".
 - CLI extras: `--as-of` value or file (C3), `recon run DIR` (C4), run time printed. Scripts: `examples`, `generate:example`, `doctor` (README "Commands").

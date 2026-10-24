@@ -1,4 +1,4 @@
-// README "Thresholds config". All limits inclusive.
+// DECISIONS "Thresholds config". All limits inclusive.
 export interface Thresholds {
   ruleAmount: string;
   ruleTimeSeconds: string;

@@ -20,7 +20,7 @@ const DIR_DEFAULTS = {
 
 const FILE_OPTIONS = ['ours', 'theirs', 'manual'] as const;
 
-// Exit 0 on success (skip issues allowed), 1 on any fatal issue (README Issue model).
+// Exit 0 on success (skip issues allowed), 1 on any fatal issue (DECISIONS Issue model).
 export async function main(argv: string[]): Promise<number> {
   const started = performance.now();
   let values: Record<string, string | undefined>;

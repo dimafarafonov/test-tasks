@@ -4,17 +4,18 @@ Update at the end of each session.
 
 ## Status (2026-10-24)
 
-- Phase: coding. Engine (manual, exact, rule_based, fuzzy) + CLI done. Nothing committed yet.
+- Phase: coding. Engine (manual, exact, rule_based, fuzzy) + CLI done. Perf change (A + B) committed.
 - All examples pass (4 given + generated `example_5_manual_1k`, `example_big` 10k). 32 tests green. Typecheck clean.
 - Stack (CLI only): Node.js >= 24 + TypeScript, npm workspaces. `temporal-polyfill`, `decimal.js`, `csv-parse`. Backend / frontend stack open.
-- `README.md`: Requirements (Q1–Q19, X1–X8) + Exceptions, all `DECIDED`. Thresholds in README "Thresholds config".
+- `README.md`: base usage (install, run, inputs, matching, output, exit codes, commands).
+- `DECISIONS.md`: Requirements (Q1–Q19, X1–X8) + Exceptions, all `DECIDED`. Thresholds in DECISIONS "Thresholds config".
 - Not-happy path: Issue model (`fatal` → exit 1 listing all; `skip` → item skipped, exit 0, printed to stderr).
 
 ## Next step
 
 - Viewer (stack TBD): CLI pretty-print minimum, web UI recommended. User was offered `recon view REPORT.json`; not decided.
 - Option: 1k example with rule_based + fuzzy rows too (offered, not decided).
-- README final sections: install / run, architecture + why, next day, AI usage.
+- README sections still to add (Q19): architecture + why, next day, AI usage.
 - Perf done (A + B): exact tier = Map by label; rule_based / fuzzy = time window. example_big 15.1 s → 0.2 s. Checked: same results as old pair-by-pair code (900 random dense runs, 0 diffs).
 - Next day list so far: perf C (amount / time as bigint at parse; helps dense data in one time window), FX conversion (R3).
 
@@ -31,13 +32,13 @@ Update at the end of each session.
 ## User decisions
 
 - Talk style: see `conversation.md`. Very short answers.
-- README split: Requirements vs Exceptions. New behavior → new README row.
-- Stack + architecture: README `Stack` (S1–S5).
+- README = usage only. DECISIONS split: Requirements vs Exceptions. New behavior → new DECISIONS row.
+- Stack + architecture: DECISIONS `Stack` (S1–S5).
 - R3: no FX conversion. Conversion → next day.
 - C3: `--as-of` takes a value or a path to a file with one value (file parsed as a whole).
 - C4: `recon run DIR` short form (DIR/ours.csv, theirs.csv, manual.csv, as_of.txt → DIR/report.json; flags override).
 - CLI prints run time after each run (not in report.json).
-- Test names: plain words + `(README code)`, readable without README or AI.
+- Test names: plain words + `(DECISIONS code)`, readable without DECISIONS or AI.
 - `npm run doctor` for setup checks.
 
 ## Code layout
@@ -50,8 +51,3 @@ Update at the end of each session.
 - Tests: `packages/core/test/*.test.ts`, `apps/cli/test/examples.test.ts` (runs bin on every `examples/*/`).
 - `scripts/run-examples.ts` (`npm run examples [-- NAME ...]`, output `out/`), `scripts/generate-example.ts` (`npm run generate:example -- ROWS [NAME]`; expected report from data design, fixed seed; as_of = end of last record's day), `scripts/doctor.js`.
 - `.gitignore`: `node_modules/`, `out/`, `examples/*/report.json`, `.DS_Store`.
-
-## Environment notes
-
-- Node 24.22.1 via nvm; `recon` linked under it (`npm link`).
-- New terminals in VS Code / Claude app showed Node 22: apps keep the PATH from their start; nvm keeps an nvm Node already on PATH. Fix: restart app (Cmd+Q) or `nvm use default --silent` in `~/.zshrc` after nvm loads. nvm default is now 24.
