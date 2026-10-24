@@ -1,0 +1,9 @@
+{
+  "name": "@recon/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@recon/core": "0.1.0"
+  }
+}
