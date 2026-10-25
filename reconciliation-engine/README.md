@@ -49,7 +49,7 @@ id,amount,timestamp,memo
 o-001,100.00,2026-04-01T10:00:00.000Z,coffee
 ```
 
-Optional extended columns: `currency,quantity,price_per_share,fx_rate,party_email` (all five or none).
+Optional extra columns: `currency,quantity,price_per_share,fx_rate,party_email`. Each one is used when the file has it. To add or rename a column, edit the field schema: [packages/core/src/fields.ts](packages/core/src/fields.ts).
 
 `manual.csv` (pairs to force; may have no rows):
 

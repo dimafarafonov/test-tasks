@@ -3,7 +3,8 @@ import { parseAsOf } from './asOf.ts';
 import { DEFAULT_THRESHOLDS, type Thresholds } from './config.ts';
 import { parseManual, parseSide, type CsvSource } from './csv.ts';
 import type { Issue } from './issue.ts';
-import { compareIds, runExact, runTier, scoreFuzzy, scoreRuleBased, toMatch } from './match.ts';
+import { DEFAULT_FIELDS, type FieldSpec } from './fields.ts';
+import { buildTiers, compareIds, toMatch, type MatchColumns } from './match.ts';
 import type { EchoRecord, Match, MatchKind, Report, TxRecord } from './types.ts';
 
 export interface ReconcileInput {
@@ -16,6 +17,7 @@ export interface ReconcileInput {
 export interface ReconcileOptions {
   thresholds?: Thresholds;
   fuzzy?: boolean;
+  fields?: readonly FieldSpec[];
 }
 
 // report is null when any issue is fatal.
@@ -28,13 +30,15 @@ const KIND_ORDER: MatchKind[] = ['manual', 'exact', 'rule_based', 'fuzzy'];
 
 export function reconcile(input: ReconcileInput, options: ReconcileOptions = {}): ReconcileResult {
   const thresholds = options.thresholds ?? DEFAULT_THRESHOLDS;
+  const fields = options.fields ?? DEFAULT_FIELDS;
   const asOf = parseAsOf(input.asOf);
-  const ours = parseSide(input.ours);
-  const theirs = parseSide(input.theirs);
+  const ours = parseSide(input.ours, fields);
+  const theirs = parseSide(input.theirs, fields);
   const manual = parseManual(input.manual);
 
   const issues = [...(asOf.ok ? [] : [asOf.issue]), ...ours.issues, ...theirs.issues, ...manual.issues];
   if (!asOf.ok || issues.some((issue) => issue.level === 'fatal')) return { report: null, issues };
+  const columns = matchColumns(fields, input, ours.columns, theirs.columns, issues);
 
   // Q4, A1: records after as_of do not exist in this run.
   const visible = (record: TxRecord) => Temporal.Instant.compare(record.instant, asOf.instant) <= 0;
@@ -51,11 +55,7 @@ export function reconcile(input: ReconcileInput, options: ReconcileOptions = {})
   };
 
   consume(applyPins(input.manual.name, manual.pins, ours.records, theirs.records, freeOurs, freeTheirs, issues));
-  consume(runExact(freeOurs, freeTheirs));
-  consume(runTier('rule_based', freeOurs, freeTheirs, scoreRuleBased(thresholds), thresholds.ruleTimeSeconds));
-  if (options.fuzzy !== false) {
-    consume(runTier('fuzzy', freeOurs, freeTheirs, scoreFuzzy(thresholds), thresholds.fuzzyTimeSeconds));
-  }
+  for (const tier of buildTiers(thresholds, columns, options.fuzzy !== false)) consume(tier(freeOurs, freeTheirs));
 
   // Q17
   matches.sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || compareIds(a.ours_id, b.ours_id));
@@ -134,15 +134,33 @@ function applyPins(
   return matches;
 }
 
-function echo(record: TxRecord): EchoRecord {
-  const base: EchoRecord = { id: record.id, amount: record.amountText, timestamp: record.timestampText };
-  if (!record.ext) return base;
-  return {
-    ...base,
-    currency: record.ext.currency,
-    quantity: record.ext.quantity,
-    price_per_share: record.ext.pricePerShare,
-    fx_rate: record.ext.fxRate,
-    party_email: record.ext.partyEmail,
+// I3: match columns that both sides have. A match column on one side only is not compared; warn,
+// because a renamed column would else turn the check off without notice.
+function matchColumns(
+  fields: readonly FieldSpec[],
+  input: ReconcileInput,
+  oursColumns: string[],
+  theirsColumns: string[],
+  issues: Issue[],
+): MatchColumns {
+  const matched = fields.filter((spec) => spec.match !== 'none');
+  const only = (source: string, mine: string[], other: string[]) => {
+    const missing = matched.filter((spec) => mine.includes(spec.column) && !other.includes(spec.column)).map((spec) => spec.column);
+    if (missing.length > 0) {
+      issues.push({ code: 'I3', level: 'skip', source, message: `column(s) ${missing.join(', ')} only in this file; not used in matching` });
+    }
   };
+  only(input.ours.name, oursColumns, theirsColumns);
+  only(input.theirs.name, theirsColumns, oursColumns);
+
+  const common = matched.filter((spec) => oursColumns.includes(spec.column) && theirsColumns.includes(spec.column));
+  return {
+    equal: common.filter((spec) => spec.match === 'equal').map((spec) => spec.column),
+    similar: common.filter((spec) => spec.match === 'similar').map((spec) => spec.column),
+  };
+}
+
+// X3: no memo. Schema columns follow in schema order (fields keeps it).
+function echo(record: TxRecord): EchoRecord {
+  return { id: record.id, amount: record.amountText, timestamp: record.timestampText, ...record.fields };
 }

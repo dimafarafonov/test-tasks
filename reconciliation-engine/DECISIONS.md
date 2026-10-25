@@ -64,8 +64,8 @@ Not stated in the brief or examples. Reasoned. We decide.
 | # | Case | Options | Decision | Why | Status |
 |---|---|---|---|---|---|
 | I1 | `ours.csv` / `theirs.csv` is header-only | valid empty side / error | valid empty side (0 records) | Same rule the brief gives for header-only `manual.csv` | DECIDED |
-| I2 | Shape detection | by header | by header: all 5 extra cols → extended; none → simple; some → simple + `skip` issue (extra cols ignored); core col missing → `fatal` | Core fields are enough to match; warning shows what was ignored | DECIDED |
-| I3 | One side simple, other side extended | compare common fields / error | compare common fields only | Simple; no crash | DECIDED |
+| I2 | Shape detection | whole shape / each column | by header, each schema column (I11) on its own: found → parsed, used, echoed; core col missing → `fatal`. All 5 or none (Q6) works as before | New or partial columns work without code change | DECIDED |
+| I3 | Column on one side only (simple vs extended, renamed column) | compare common fields / error | compare common fields only; match column on one side only → `skip` issue I3 (warning, run continues) | Simple; no crash. Warning shows a renamed column that would else turn a check off | DECIDED |
 | I4 | Timestamp precision varies (`.5Z`, no fraction, µs) | normalize to ms / keep full precision | keep full precision (`temporal-polyfill`, ns) | Brief allows sub-second; no precision loss; standard API, no own parser | DECIDED |
 | I5 | Amount math | decimal type / integer cents | decimal type (`decimal.js`) | Exact; built-in parse, format, rounding; readable | DECIDED |
 | I6 | Memo with comma / quotes / newline | standard CSV parser | standard CSV parser (`csv-parse`) | Handles quotes, commas, newlines correctly | DECIDED |
@@ -73,6 +73,7 @@ Not stated in the brief or examples. Reasoned. We decide.
 | I8 | Bad row (missing field, bad number) | error exit / skip + warn | skip row (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
 | I9 | Extra unknown columns | ignore / echo / error | ignore; not echoed | Brief defines the fields; extra columns are noise | DECIDED |
 | I10 | Record timestamp with offset (`+02:00`) / empty `currency`, `party_email` | accept / skip row | accept (any ISO offset via Temporal; empty string is a value) | Not a broken row; matching still works on the parsed value | DECIDED |
+| I11 | Adding / renaming extra columns | code per column / field schema | field schema `packages/core/src/fields.ts`: one row per column (`type`: text / integer / decimal; `match`: equal / similar / none; `aliases`). Order = echo order | New column = one row; rename = alias. Match keys normalized (decimal by value) | DECIDED |
 
 ### as_of
 
@@ -177,7 +178,7 @@ Issue { code: "I7" | "M1" | "C1" ..., level: "fatal" | "skip",
 | Level | Meaning | Run | Exit |
 |---|---|---|---|
 | `fatal` | Input unusable (C1, C2) | stop after all checks | 1 |
-| `skip` | One item bad (I7, I8, M1, M3, M4) | continue without item | 0 |
+| `skip` | One item bad (I3, I7, I8, M1, M3, M4) | continue without item | 0 |
 
 - `code` = DECISIONS ID. New case = new code, no new path.
 - Core returns `{ report, issues }`. Core never prints.

@@ -1,5 +1,5 @@
 import type { Thresholds } from './config.ts';
-import { D, nanosToSeconds, secondsToNanos, toFixed } from './decimal.ts';
+import { D, decimalKey, nanosToSeconds, secondsToNanos, toFixed } from './decimal.ts';
 import { normalizeText, similarity } from './similarity.ts';
 import type { Match, MatchKind, TxRecord } from './types.ts';
 
@@ -31,10 +31,15 @@ export function toMatch(kind: MatchKind, ours: TxRecord, theirs: TxRecord): Matc
 
 const absNanos = (nanos: bigint): bigint => (nanos < 0n ? -nanos : nanos);
 
-// E1, E2, Q10: party-identity fields equal. I3: only when both sides carry them.
-function sameParty(ours: TxRecord, theirs: TxRecord): boolean {
-  if (!ours.ext || !theirs.ext) return true;
-  return ours.ext.currency === theirs.ext.currency && ours.ext.partyEmail === theirs.ext.partyEmail;
+// Schema columns (fields.ts) that both sides have, by match rule. I3: a column on one side only is not compared.
+export interface MatchColumns {
+  equal: string[];
+  similar: string[];
+}
+
+// E1, E2, Q10: party-identity fields equal.
+function sameParty(ours: TxRecord, theirs: TxRecord, columns: readonly string[]): boolean {
+  return columns.every((column) => ours.keys[column] === theirs.keys[column]);
 }
 
 function withinLimits(d: PairDiff, maxAmount: string, maxSeconds: string): boolean {
@@ -62,20 +67,11 @@ function compareKeys(a: Candidate['keys'], b: Candidate['keys']): number {
 
 const byId = (a: TxRecord, b: TxRecord) => compareIds(a.id, b.id);
 
-// Same text for the same value: "100.0" and "100.00" → "100", "-0" → "0".
-const amountKey = (amount: D): string => (amount.isZero() ? '0' : amount.toString());
-
 // Exact tier (Q9, E1, I3, E3). Equal records get equal labels, so a Map finds the partner
-// without comparing every pair. Same result as runTier with scoreExact.
-export function runExact(ours: TxRecord[], theirs: TxRecord[]): Match[] {
-  // I3: party fields count only when both sides carry them. One CSV has one shape (Q6),
-  // so a side is all extended or all simple; a mixed side falls back to pair checks.
-  const party = ours.every((r) => r.ext) && theirs.every((r) => r.ext);
-  const noParty = ours.every((r) => !r.ext) || theirs.every((r) => !r.ext);
-  if (!party && !noParty) return runTier('exact', ours, theirs, scoreExact);
-
+// without comparing every pair.
+export function runExact(ours: TxRecord[], theirs: TxRecord[], party: readonly string[]): Match[] {
   const label = (r: TxRecord): string =>
-    JSON.stringify([amountKey(r.amount), r.instant.epochNanoseconds.toString(), ...(party ? [r.ext!.currency, r.ext!.partyEmail] : [])]);
+    JSON.stringify([decimalKey(r.amount), r.instant.epochNanoseconds.toString(), ...party.map((column) => r.keys[column])]);
 
   // label → theirs records with that label, in id order.
   const boxes = new Map<string, TxRecord[]>();
@@ -146,37 +142,41 @@ export function runTier(
   return matches;
 }
 
-// Q9 + E1. E3: ties go by ours_id, then theirs_id (added by runTier).
-export function scoreExact(o: TxRecord, t: TxRecord): Candidate['keys'] | null {
-  const d = diff(o, t);
-  return d.amount.isZero() && d.nanos === 0n && sameParty(o, t) ? [] : null;
-}
-
 // Q10. R5: closest |amount diff|, then |time diff|, then ids.
-export function scoreRuleBased(thresholds: Thresholds) {
+export function scoreRuleBased(thresholds: Thresholds, party: readonly string[]) {
   return (o: TxRecord, t: TxRecord): Candidate['keys'] | null => {
     const d = diff(o, t);
-    if (!sameParty(o, t) || !withinLimits(d, thresholds.ruleAmount, thresholds.ruleTimeSeconds)) return null;
+    if (!sameParty(o, t, party) || !withinLimits(d, thresholds.ruleAmount, thresholds.ruleTimeSeconds)) return null;
     return [d.amount.abs(), absNanos(d.nanos)];
   };
 }
 
-// Q12, F3–F6. Memo must be similar (both non-empty). Extended on both sides:
-// party_email similar too, currency equal. Best text first (lowest similarity of the
-// checked fields), then R5 order.
-export function scoreFuzzy(thresholds: Thresholds) {
+// Q12, F3–F7. Memo must be similar (both non-empty). 'similar' columns similar too,
+// 'equal' columns equal. Best text first (lowest similarity of the checked fields), then R5 order.
+export function scoreFuzzy(thresholds: Thresholds, columns: MatchColumns) {
   const minSimilarity = Number(thresholds.fuzzySimilarity);
   return (o: TxRecord, t: TxRecord): Candidate['keys'] | null => {
     const d = diff(o, t);
     if (!withinLimits(d, thresholds.fuzzyAmount, thresholds.fuzzyTimeSeconds)) return null;
     if (normalizeText(o.memo) === '' || normalizeText(t.memo) === '') return null;
 
+    if (!sameParty(o, t, columns.equal)) return null;
     let textScore = similarity(o.memo, t.memo);
-    if (o.ext && t.ext) {
-      if (o.ext.currency !== t.ext.currency) return null;
-      textScore = Math.min(textScore, similarity(o.ext.partyEmail, t.ext.partyEmail));
-    }
+    for (const column of columns.similar) textScore = Math.min(textScore, similarity(o.keys[column]!, t.keys[column]!));
     if (textScore < minSimilarity) return null;
     return [-textScore, d.amount.abs(), absNanos(d.nanos)];
   };
+}
+
+// One matching step: takes the free records, returns its matches.
+export type Tier = (ours: TxRecord[], theirs: TxRecord[]) => Match[];
+
+// After manual, in priority order (Q7). New tier = new line.
+export function buildTiers(thresholds: Thresholds, columns: MatchColumns, fuzzy: boolean): Tier[] {
+  const party = [...columns.equal, ...columns.similar];
+  return [
+    (o, t) => runExact(o, t, party),
+    (o, t) => runTier('rule_based', o, t, scoreRuleBased(thresholds, party), thresholds.ruleTimeSeconds),
+    ...(fuzzy ? [(o: TxRecord[], t: TxRecord[]) => runTier('fuzzy', o, t, scoreFuzzy(thresholds, columns), thresholds.fuzzyTimeSeconds)] : []),
+  ];
 }

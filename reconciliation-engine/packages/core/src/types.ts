@@ -3,14 +3,7 @@ import type { D } from './decimal.ts';
 
 export type Side = 'ours' | 'theirs';
 
-// Extended shape (Q6): all five fields or none. Texts are trimmed input, echoed as-is.
-export interface ExtendedFields {
-  currency: string;
-  quantity: number;
-  pricePerShare: string;
-  fxRate: string;
-  partyEmail: string;
-}
+export type FieldValue = string | number;
 
 export interface TxRecord {
   id: string;
@@ -20,7 +13,10 @@ export interface TxRecord {
   timestampText: string;
   instant: Temporal.Instant;
   memo: string;
-  ext?: ExtendedFields;
+  // Schema columns in the file (fields.ts), in schema order. Values as echoed: trimmed text, integer as number.
+  fields: Record<string, FieldValue>;
+  // Same columns, match != 'none' only: one text per value, so equal values compare equal ("1.0" = "1.00").
+  keys: Record<string, string>;
 }
 
 export interface Pin {
@@ -39,16 +35,12 @@ export interface Match {
   timestamp_diff_seconds: string;
 }
 
-// Unmatched echo: input fields without memo (X3), quantity as number (X4).
+// Unmatched echo: input fields without memo (X3), then schema columns in the file (X4).
 export interface EchoRecord {
   id: string;
   amount: string;
   timestamp: string;
-  currency?: string;
-  quantity?: number;
-  price_per_share?: string;
-  fx_rate?: string;
-  party_email?: string;
+  [column: string]: FieldValue;
 }
 
 export interface Summary {

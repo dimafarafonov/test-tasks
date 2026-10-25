@@ -1,20 +1,24 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { reconcile, type ReconcileInput } from '../src/index.ts';
+import { DEFAULT_FIELDS, reconcile, type FieldSpec, type ReconcileInput } from '../src/index.ts';
 
 const SIMPLE = 'id,amount,timestamp,memo';
 const EXT = `${SIMPLE},currency,quantity,price_per_share,fx_rate,party_email`;
 const AS_OF = '2026-05-01T23:59:59.999Z';
 
-function run(ours: string[], theirs: string[], opts: { manual?: string[]; asOf?: string; header?: string } = {}) {
+function run(
+  ours: string[],
+  theirs: string[],
+  opts: { manual?: string[]; asOf?: string; header?: string; theirsHeader?: string; fields?: FieldSpec[] } = {},
+) {
   const header = opts.header ?? SIMPLE;
   const input: ReconcileInput = {
     ours: { name: 'ours.csv', text: [header, ...ours].join('\n') },
-    theirs: { name: 'theirs.csv', text: [header, ...theirs].join('\n') },
+    theirs: { name: 'theirs.csv', text: [opts.theirsHeader ?? header, ...theirs].join('\n') },
     manual: { name: 'manual.csv', text: ['ours_id,theirs_id', ...(opts.manual ?? [])].join('\n') },
     asOf: opts.asOf ?? AS_OF,
   };
-  return reconcile(input);
+  return reconcile(input, { fields: opts.fields });
 }
 
 const kinds = (r: ReturnType<typeof run>) => r.report!.matches.map((m) => `${m.kind}:${m.ours_id}-${m.theirs_id}`);
@@ -144,13 +148,45 @@ test('duplicate id and bad rows are skipped with a warning; the run continues (D
   assert.equal(r.issues[0]!.row, 3);
 });
 
-test('missing core column stops the run; only some extended columns: they are ignored with a warning (DECISIONS I2)', () => {
+test('missing core column stops the run; only some extra columns: each one found is used and echoed (DECISIONS I2)', () => {
   const fatal = run([], [], { header: 'id,amount,timestamp' });
   assert.equal(fatal.report, null);
   assert.deepEqual(codes(fatal), ['I2', 'I2']);
-  const partial = run(['o1,5.00,2026-05-01T10:00:00Z,,USD'], [], { header: `${SIMPLE},currency` });
-  assert.deepEqual(partial.report!.unmatched_ours, [{ id: 'o1', amount: '5.00', timestamp: '2026-05-01T10:00:00Z' }]);
-  assert.deepEqual(codes(partial), ['I2', 'I2']); // one per side
+  const partial = run(['o1,5.00,2026-05-01T10:00:00Z,,USD'], ['t1,5.00,2026-05-01T10:00:00Z,,EUR'], { header: `${SIMPLE},currency` });
+  assert.deepEqual(kinds(partial), []); // currency differs
+  assert.deepEqual(partial.report!.unmatched_ours, [{ id: 'o1', amount: '5.00', timestamp: '2026-05-01T10:00:00Z', currency: 'USD' }]);
+  assert.deepEqual(codes(partial), []);
+});
+
+test('a match column on one side only is not compared, with a warning; a renamed column is caught this way (DECISIONS I3)', () => {
+  const r = run(['o1,5.00,2026-05-01T10:00:00Z,,a@x.com'], ['t1,5.00,2026-05-01T10:00:00Z,,b@x.com'], {
+    header: `${SIMPLE},party_email`,
+    theirsHeader: `${SIMPLE},email`,
+  });
+  assert.deepEqual(kinds(r), ['exact:o1-t1']);
+  assert.deepEqual(r.issues.map((i) => `${i.code} ${i.source}: ${i.message}`), [
+    'I3 ours.csv: column(s) party_email only in this file; not used in matching',
+  ]);
+});
+
+test('field schema: an alias reads a renamed column; a new column is matched and echoed; decimals compare by value (DECISIONS I11)', () => {
+  const fields: FieldSpec[] = [
+    ...DEFAULT_FIELDS.map((spec) => (spec.column === 'party_email' ? { ...spec, aliases: ['email'] } : spec)),
+    { column: 'account', type: 'text', match: 'equal' },
+    { column: 'fee', type: 'decimal', match: 'equal' },
+  ];
+  const r = run(
+    ['o1,5.00,2026-05-01T10:00:00Z,,a@x.com,A1,1.0', 'o2,6.00,2026-05-01T11:00:00Z,,a@x.com,A1,1.0'],
+    ['t1,5.00,2026-05-01T10:00:00Z,,b@x.com,A1,1.00', 't2,6.00,2026-05-01T11:00:00Z,,a@x.com,A2,1.00'],
+    { header: `${SIMPLE},party_email,account,fee`, theirsHeader: `${SIMPLE},email,account,fee`, fields },
+  );
+  assert.deepEqual(kinds(r), []); // o1/t1: email differs (alias read); o2/t2: account differs
+  assert.deepEqual(codes(r), []);
+  assert.deepEqual(r.report!.unmatched_theirs[0], {
+    id: 't1', amount: '5.00', timestamp: '2026-05-01T10:00:00Z', party_email: 'b@x.com', account: 'A1', fee: '1.00',
+  });
+  const same = run(['o1,5.00,2026-05-01T10:00:00Z,,1.0'], ['t1,5.00,2026-05-01T10:00:00Z,,1.00'], { header: `${SIMPLE},fee`, fields });
+  assert.deepEqual(kinds(same), ['exact:o1-t1']);
 });
 
 test('memo in quotes with comma, quotes and newline is read correctly (DECISIONS I6)', () => {
