@@ -73,7 +73,7 @@ Not stated in the brief or examples. Reasoned. We decide.
 | I8 | Bad row (missing field, bad number) | error exit / skip + warn | skip row (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
 | I9 | Extra unknown columns | ignore / echo / error | ignore; not echoed | Brief defines the fields; extra columns are noise | DECIDED |
 | I10 | Record timestamp with offset (`+02:00`) / empty `currency`, `party_email` | accept / skip row | accept (any ISO offset via Temporal; empty string is a value) | Not a broken row; matching still works on the parsed value | DECIDED |
-| I11 | Adding / renaming extra columns | code per column / field schema | field schema `packages/core/src/fields.ts`: one row per column (`type`: text / integer / decimal; `match`: equal / similar / none; `aliases`). Order = echo order | New column = one row; rename = alias. Match keys normalized (decimal by value) | DECIDED |
+| I11 | Adding / renaming extra columns | code per column / field schema | field schema `packages/core/src/config/fields.ts`: one row per column (`type`: text / integer / decimal; `match`: equal / similar / none; `aliases`). Order = echo order | New column = one row; rename = alias. Match keys normalized (decimal by value) | DECIDED |
 
 ### as_of
 

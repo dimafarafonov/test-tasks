@@ -74,7 +74,7 @@ for (let i = 0; i < exactCount; i++) {
   exact.push([o, t]);
 }
 
-// Pins: different amount and time, so only the manual tier can pair them (Q8).
+// Pins: different amount and time, so only manual matching can pair them (Q8).
 for (let i = 0; i < pinCount; i++) {
   const ms = nextMs();
   const o = { id: `o-${pad(ours.length + 1)}`, cents: pinOursBase + i * 111, ms, memo: 'refund' };

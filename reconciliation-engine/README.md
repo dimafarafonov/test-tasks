@@ -49,7 +49,7 @@ id,amount,timestamp,memo
 o-001,100.00,2026-04-01T10:00:00.000Z,coffee
 ```
 
-Optional extra columns: `currency,quantity,price_per_share,fx_rate,party_email`. Each one is used when the file has it. To add or rename a column, edit the field schema: [packages/core/src/fields.ts](packages/core/src/fields.ts).
+Optional extra columns: `currency,quantity,price_per_share,fx_rate,party_email`. Each one is used when the file has it. To add or rename a column, edit the field schema: [packages/core/src/config/fields.ts](packages/core/src/config/fields.ts). All options with an example: [examples/fields.example.ts](examples/fields.example.ts).
 
 `manual.csv` (pairs to force; may have no rows):
 
@@ -60,7 +60,7 @@ o-002,t-102
 
 ## Matching
 
-Each record matches at most once. Tiers run in this order:
+Each record matches at most once. Match kinds run in this order:
 
 | Kind | Rule |
 |---|---|
@@ -69,7 +69,7 @@ Each record matches at most once. Tiers run in this order:
 | `rule_based` | Amount diff ≤ 0.02, time diff ≤ 2 s, same party fields. |
 | `fuzzy` | Similar memo (and `party_email`), amount diff ≤ 0.10, time diff ≤ 2 s, same currency. |
 
-Limits: [packages/core/src/config.ts](packages/core/src/config.ts).
+Limits: [packages/core/src/config/thresholds.ts](packages/core/src/config/thresholds.ts).
 
 ## Output
 
@@ -105,6 +105,38 @@ Diffs are ours minus theirs.
 | `npm run examples [-- NAME ...]` | Run examples, compare with `expected_report.json`, show run time |
 | `npm run generate:example -- ROWS [NAME]` | Build a large example (80% exact, 10% manual, 10% unmatched) |
 | `npm run doctor` | Check Node version, nvm default, deps, `recon` on PATH |
+
+## Code layout
+
+The engine is `packages/core/src`. Folders follow the path of a record: read → match → report.
+
+```
+reconcile.ts      pipeline only: input → as_of filter → manual → other match kinds → report
+input/            reading files: CSV table, ours / theirs rows, manual.csv, as_of
+matching/         one file per match kind: manual, exact, ruleBased, fuzzy
+                  order.ts (kind order), party.ts (columns that must be equal),
+                  greedy.ts (best pair first, time window), diff.ts (amount / time diff)
+output/           report.json: diffs, unmatched echo, sorting and summary
+config/           thresholds.ts (limits), fields.ts (extra columns)
+lib/              generic helpers: decimal, text similarity, id order
+```
+
+Tests mirror it: `packages/core/test/matching/exact.test.ts` tests `src/matching/exact.ts`. Each test name ends with a DECISIONS code, for example `(DECISIONS R2)`.
+
+## Where to fix
+
+| Symptom | Look in |
+|---|---|
+| Row skipped, column not read, bad number accepted | `input/` |
+| Wrong `as_of` filter | `input/asOf.ts`, `reconcile.ts` step 2 |
+| Pin ignored or wrong | `matching/manual.ts` |
+| Wrong kind, or a pair should match but does not | `matching/<kind>.ts`, then `config/thresholds.ts` |
+| Pair blocked by currency / email / other column | `matching/party.ts`, `config/fields.ts` |
+| Wrong pair picked among many candidates | `matching/greedy.ts` (sort keys), `matching/<kind>.ts` (score) |
+| Wrong diff, rounding, `-0.00` | `output/match.ts`, `lib/decimal.ts` |
+| Wrong order, summary or unmatched fields | `output/report.ts`, `output/echo.ts` |
+
+Steps: test name → DECISIONS code (what the rule is) → file from the table.
 
 ## Troubleshooting
 

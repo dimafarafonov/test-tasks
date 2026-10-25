@@ -1,5 +1,5 @@
 import { Temporal } from 'temporal-polyfill';
-import type { Issue } from './issue.ts';
+import type { Issue } from '../issue.ts';
 
 // A3: no fraction or 1–9 fraction digits, UTC "Z" only.
 const AS_OF_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/;

@@ -1,66 +1,11 @@
-import { parse } from 'csv-parse/sync';
 import { Temporal } from 'temporal-polyfill';
-import { D, decimalKey } from './decimal.ts';
-import type { Issue } from './issue.ts';
-import type { FieldSpec } from './fields.ts';
-import type { FieldValue, Pin, TxRecord } from './types.ts';
-
-export interface CsvSource {
-  name: string; // shown in issues, e.g. "ours.csv"
-  text: string;
-}
+import type { FieldSpec } from '../config/fields.ts';
+import type { Issue } from '../issue.ts';
+import { D, decimalKey } from '../lib/decimal.ts';
+import type { FieldValue, TxRecord } from '../types.ts';
+import { DECIMAL_PATTERN, INTEGER_PATTERN, readTable, type CsvSource, type Row } from './table.ts';
 
 const CORE_COLUMNS = ['id', 'amount', 'timestamp', 'memo'] as const;
-const MANUAL_COLUMNS = ['ours_id', 'theirs_id'] as const;
-
-const DECIMAL_PATTERN = /^[+-]?\d+(\.\d+)?$/;
-const INTEGER_PATTERN = /^[+-]?\d+$/;
-
-interface Row {
-  line: number;
-  get(column: string): string | undefined;
-}
-
-type TableResult = { ok: true; header: string[]; rows: Row[] } | { ok: false; issue: Issue };
-
-// I6: standard CSV parser. Header names trimmed; first column with a name wins.
-function readTable(source: CsvSource, required: readonly string[]): TableResult {
-  let parsed: { record: string[]; info: { lines: number } }[];
-  try {
-    parsed = parse(source.text, {
-      bom: true,
-      info: true,
-      relax_column_count: true,
-      skip_empty_lines: true,
-    }) as unknown as typeof parsed;
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    return { ok: false, issue: { code: 'I6', level: 'fatal', source: source.name, message: `CSV syntax error: ${reason}` } };
-  }
-
-  const [first, ...data] = parsed;
-  const header = (first?.record ?? []).map((name) => name.trim());
-  const missing = required.filter((column) => !header.includes(column));
-  if (missing.length > 0) {
-    return {
-      ok: false,
-      issue: { code: 'I2', level: 'fatal', source: source.name, message: `missing column(s): ${missing.join(', ')}` },
-    };
-  }
-
-  const index = new Map<string, number>();
-  header.forEach((name, i) => {
-    if (!index.has(name)) index.set(name, i);
-  });
-  const rows = data.map(({ record, info }) => ({
-    line: info.lines,
-    get: (column: string) => {
-      const i = index.get(column);
-      return i === undefined ? undefined : record[i];
-    },
-  }));
-  return { ok: true, header, rows };
-}
 
 export interface SideResult {
   records: TxRecord[];
@@ -153,28 +98,4 @@ function parseField(spec: FieldSpec, text: string): { echo: FieldValue; key: str
     case 'decimal':
       return DECIMAL_PATTERN.test(text) ? { echo: text, key: decimalKey(new D(text)) } : undefined;
   }
-}
-
-export interface ManualResult {
-  pins: Pin[];
-  issues: Issue[];
-}
-
-// Syntax only. Pin checks against records (M1–M4) run in reconcile.
-export function parseManual(source: CsvSource): ManualResult {
-  const table = readTable(source, MANUAL_COLUMNS);
-  if (!table.ok) return { pins: [], issues: [table.issue] };
-
-  const pins: Pin[] = [];
-  const issues: Issue[] = [];
-  for (const row of table.rows) {
-    const oursId = row.get('ours_id')?.trim();
-    const theirsId = row.get('theirs_id')?.trim();
-    if (!oursId || !theirsId) {
-      issues.push({ code: 'I8', level: 'skip', source: source.name, row: row.line, message: 'pin skipped: empty or missing id' });
-      continue;
-    }
-    pins.push({ oursId, theirsId, row: row.line });
-  }
-  return { pins, issues };
 }

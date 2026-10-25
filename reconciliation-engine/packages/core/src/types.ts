@@ -1,5 +1,5 @@
 import type { Temporal } from 'temporal-polyfill';
-import type { D } from './decimal.ts';
+import type { D } from './lib/decimal.ts';
 
 export type Side = 'ours' | 'theirs';
 
@@ -13,7 +13,7 @@ export interface TxRecord {
   timestampText: string;
   instant: Temporal.Instant;
   memo: string;
-  // Schema columns in the file (fields.ts), in schema order. Values as echoed: trimmed text, integer as number.
+  // Schema columns in the file (config/fields.ts), in schema order. Values as echoed: trimmed text, integer as number.
   fields: Record<string, FieldValue>;
   // Same columns, match != 'none' only: one text per value, so equal values compare equal ("1.0" = "1.00").
   keys: Record<string, string>;

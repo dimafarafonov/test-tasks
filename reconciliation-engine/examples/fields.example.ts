@@ -1,5 +1,5 @@
 // Field schema showcase: every extra column, written out in full. Reference only, not used by the engine.
-// The engine uses DEFAULT_FIELDS (packages/core/src/fields.ts). Copy rows from here to extend it.
+// The engine uses DEFAULT_FIELDS (packages/core/src/config/fields.ts). Copy rows from here to extend it.
 //
 // column:  name in the header (and in the report).
 // type:    'text'    → trimmed string
