@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { SIMPLE, run, kinds, codes } from '../runEngine.ts';
+import { SIMPLE, run, kinds, codes } from '../../runEngine.ts';
 
 test('timestamps with different fraction digits are compared as the same moment (DECISIONS I4)', () => {
   const r = run(['o1,5.00,2026-05-01T10:00:00Z,'], ['t1,5.00,2026-05-01T10:00:00.000000Z,']);

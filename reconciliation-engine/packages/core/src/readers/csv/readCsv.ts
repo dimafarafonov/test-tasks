@@ -1,10 +1,7 @@
 import { parse } from 'csv-parse/sync';
-import type { Exception } from '../exceptions.ts';
+import type { Exception } from '../../exceptions.ts';
+import type { Source } from '../../types.ts';
 
-export interface CsvSource {
-  name: string; // shown in exceptions, e.g. "ours.csv"
-  text: string;
-}
 
 export const DECIMAL_PATTERN = /^[+-]?\d+(\.\d+)?$/;
 export const INTEGER_PATTERN = /^[+-]?\d+$/;
@@ -17,7 +14,7 @@ export interface Row {
 type CsvResult = { ok: true; header: string[]; rows: Row[] } | { ok: false; exception: Exception };
 
 // I6: standard CSV parser. Header names trimmed; first column with a name wins.
-export function readCsv(source: CsvSource, required: readonly string[]): CsvResult {
+export function readCsv(source: Source, required: readonly string[]): CsvResult {
   let parsed: { record: string[]; info: { lines: number } }[];
   try {
     parsed = parse(source.text, {

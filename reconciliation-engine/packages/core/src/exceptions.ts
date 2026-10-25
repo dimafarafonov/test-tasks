@@ -9,3 +9,11 @@ export interface Exception {
   id?: string;
   message: string;
 }
+
+// One line for people: "skip M1 manual.csv row 3: pin o-9,t-9 skipped: ours id o-9 not found".
+export function formatException(exception: Exception): string {
+  const where = [exception.source, exception.row !== undefined ? `row ${exception.row}` : '', exception.id ? `id ${exception.id}` : '']
+    .filter(Boolean)
+    .join(' ');
+  return `${exception.level} ${exception.code} ${where}: ${exception.message}`;
+}

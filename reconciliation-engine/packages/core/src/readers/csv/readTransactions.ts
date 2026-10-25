@@ -1,17 +1,12 @@
 import { Temporal } from 'temporal-polyfill';
-import type { ColumnSpec } from '../settings/columns.ts';
-import type { Exception } from '../exceptions.ts';
-import { D, decimalKey } from '../helpers/numbers.ts';
-import type { ColumnValue, Transaction } from '../types.ts';
-import { DECIMAL_PATTERN, INTEGER_PATTERN, readCsv, type CsvSource, type Row } from './readCsv.ts';
+import type { ColumnSpec } from '../../settings/columns.ts';
+import type { Exception } from '../../exceptions.ts';
+import { D, decimalKey } from '../../helpers/numbers.ts';
+import type { ColumnValue, Source, Transaction } from '../../types.ts';
+import type { TransactionsResult } from '../reader.ts';
+import { DECIMAL_PATTERN, INTEGER_PATTERN, readCsv, type Row } from './readCsv.ts';
 
 const CORE_COLUMNS = ['id', 'amount', 'timestamp', 'memo'] as const;
-
-export interface TransactionsResult {
-  records: Transaction[];
-  exceptions: Exception[];
-  columnNames: string[]; // schema columns found in the header (I2)
-}
 
 // A schema column and the header name it is read from (the column itself or an alias).
 interface ColumnSource {
@@ -19,7 +14,7 @@ interface ColumnSource {
   header: string;
 }
 
-export function readTransactions(source: CsvSource, specs: readonly ColumnSpec[]): TransactionsResult {
+export function readTransactions(source: Source, specs: readonly ColumnSpec[]): TransactionsResult {
   const table = readCsv(source, CORE_COLUMNS);
   if (!table.ok) return { records: [], exceptions: [table.exception], columnNames: [] };
 

@@ -1,16 +1,12 @@
-import type { Exception } from '../exceptions.ts';
-import type { Pin } from '../types.ts';
-import { readCsv, type CsvSource } from './readCsv.ts';
+import type { Exception } from '../../exceptions.ts';
+import type { Pin, Source } from '../../types.ts';
+import type { ManualResult } from '../reader.ts';
+import { readCsv } from './readCsv.ts';
 
 const MANUAL_COLUMNS = ['ours_id', 'theirs_id'] as const;
 
-export interface ManualResult {
-  pins: Pin[];
-  exceptions: Exception[];
-}
-
-// Syntax only. Pin checks against records (M1–M4) run in reconcile.
-export function readManual(source: CsvSource): ManualResult {
+// Syntax only. Pin checks against records (M1–M4) run in the engine.
+export function readManual(source: Source): ManualResult {
   const table = readCsv(source, MANUAL_COLUMNS);
   if (!table.ok) return { pins: [], exceptions: [table.exception] };
 

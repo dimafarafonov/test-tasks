@@ -39,7 +39,7 @@ Each record matches at most once. Only records with `timestamp <= as_of`.
 
 ### TBD
 
-- Viewer (CLI pretty-print / web UI): not decided. Next step.
+- Web UI: later, with a backend. Pretty CLI viewer done (DECISIONS C5).
 - Backend / frontend stack: open. May differ from CLI stack.
 
 ### Decided (CLI only — see DECISIONS `Stack`)

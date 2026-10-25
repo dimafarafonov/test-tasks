@@ -40,6 +40,39 @@ Output on success:
 matched: manual 1, exact 1, rule_based 0, fuzzy 0; unmatched: ours 1, theirs 1 → examples/example_2_with_manual/report.json (6.1 ms)
 ```
 
+## View the result
+
+```bash
+recon view examples/example_3_multi_party_currency/report.json   # show a report that exists
+recon run examples/example_3_multi_party_currency --view          # run, then show it
+```
+
+```
+Reconciliation report · as of 2026-05-01T23:59:59.999Z
+
+Summary
+  manual       1
+  exact        1
+  rule_based   1
+  fuzzy        0
+  unmatched    ours 1 · theirs 1
+
+Matches
+  KIND         OURS    THEIRS   AMOUNT DIFF   TIME DIFF (s)
+  manual       o-004   t-104           0.00           0.000
+  exact        o-001   t-101           0.00           0.000
+  rule_based   o-002   t-102          -0.01          -0.500
+
+Unmatched ours
+  ID      AMOUNT   TIMESTAMP                  CURRENCY   QUANTITY   PRICE PER SHARE   FX RATE    PARTY EMAIL
+  o-003   500.00   2026-05-01T12:00:00.000Z   USD        10         50.00             1.000000   alice@acme.com
+...
+```
+
+- Each table shows the first 50 rows; `--all` shows every row.
+- Colors only on a terminal; set `NO_COLOR=1` to turn them off.
+- With `--view`, skipped rows and pins are listed in an "Exceptions" table, not on stderr. `report.json` never holds them.
+
 ## Input files
 
 `ours.csv`, `theirs.csv`:
@@ -108,18 +141,23 @@ Diffs are ours minus theirs.
 
 ## Code layout
 
-The engine is `packages/core/src`. Folders follow the path of a record: read → match → report.
+The engine is `packages/core/src`. Folders follow the path of a record: read → match → build report → write.
 
 ```
-reconcile.ts      pipeline only: input → as_of filter → manual → other match kinds → report
-exceptions.ts     problems found in the input (fatal / skip)
-types.ts          shared types: Transaction, Match, Report
+reconcile.ts      read the files (reader by extension), then run the engine
+engine.ts         records in, report out: as_of filter → manual → other match kinds → report.
+                  Knows nothing about files or formats.
+exceptions.ts     problems found in the input (fatal / skip), one-line format
+types.ts          shared types: Source, Transaction, Match, Report
 
-input/            reading files
-  readCsv.ts            any CSV file: header, rows
-  readTransactions.ts   ours.csv / theirs.csv rows, extra columns
-  readManual.ts         manual.csv rows
+readers/          input formats → records. New format = new folder + 1 line in index.ts
+  index.ts              extension → reader (unknown → csv)
+  reader.ts             what a reader must return
   readAsOf.ts           the as_of value
+  csv/
+    readCsv.ts            any CSV file: header, rows
+    readTransactions.ts   ours / theirs rows, extra columns
+    readManual.ts         manual rows
 
 matching/         one file per match kind
   manual.ts, exact.ts, ruleBased.ts, fuzzy.ts
@@ -128,10 +166,14 @@ matching/         one file per match kind
   pickBest.ts           best pair first, time window
   difference.ts         amount / time difference, limit check
 
-output/           report.json
+output/           the report object (what report.json holds)
   matchEntry.ts         one line in "matches" (diffs, rounding)
   unmatchedEntry.ts     one line in "unmatched_*"
   buildReport.ts        sorting and summary
+
+writers/          report object → text. New format = new file + 1 line in index.ts
+  json.ts               report.json (brief contract)
+  pretty.ts             tables for the terminal (recon view, --view)
 
 settings/
   limits.ts             0.02, 2 s, 0.75 ...
@@ -147,14 +189,15 @@ Tests mirror it: `packages/core/test/matching/exact.test.ts` tests `src/matching
 
 | Symptom | Look in |
 |---|---|
-| Row skipped, column not read, bad number accepted | `input/` |
-| Wrong `as_of` filter | `input/readAsOf.ts`, `reconcile.ts` step 2 |
+| Row skipped, column not read, bad number accepted | `readers/csv/` |
+| Wrong `as_of` filter | `readers/readAsOf.ts`, `engine.ts` step 1 |
 | Pin ignored or wrong | `matching/manual.ts` |
 | Wrong kind, or a pair should match but does not | `matching/<kind>.ts`, then `settings/limits.ts` |
 | Pair blocked by currency / email / other column | `matching/sameParty.ts`, `settings/columns.ts` |
 | Wrong pair picked among many candidates | `matching/pickBest.ts` (sort keys), `matching/<kind>.ts` (score) |
 | Wrong diff, rounding, `-0.00` | `output/matchEntry.ts`, `helpers/numbers.ts` |
 | Wrong order, summary or unmatched fields | `output/buildReport.ts`, `output/unmatchedEntry.ts` |
+| Wrong file format written, or the view looks wrong | `writers/json.ts`, `writers/pretty.ts` |
 
 Steps: test name → DECISIONS code (what the rule is) → file from the table.
 

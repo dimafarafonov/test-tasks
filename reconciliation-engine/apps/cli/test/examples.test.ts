@@ -71,3 +71,26 @@ test('recon run DIR reads the input files from DIR and writes DIR/report.json (D
   const actual = JSON.parse(readFileSync(join(dir, 'report.json'), 'utf8'));
   assert.deepStrictEqual(actual, JSON.parse(readFileSync(join(source, 'expected_report.json'), 'utf8')));
 });
+
+test('recon view shows a report as tables; run --view shows them after the run; a bad file stops with exit 1 (DECISIONS C5)', () => {
+  const dir = join(examples, 'example_3_multi_party_currency');
+  const viewed = execFileSync(process.execPath, [bin, 'view', join(dir, 'expected_report.json')], { encoding: 'utf8' });
+  for (const part of ['Reconciliation report', 'rule_based   o-002   t-102', 'Unmatched theirs', 'carol@acme.com']) {
+    assert.ok(viewed.includes(part), `view lacks "${part}":\n${viewed}`);
+  }
+
+  const output = join(mkdtempSync(join(tmpdir(), 'recon-')), 'report.json');
+  const ran = execFileSync(process.execPath, [bin, 'run', '--ours', join(dir, 'ours.csv'), '--theirs', join(dir, 'theirs.csv'),
+    '--manual', join(dir, 'manual.csv'), '--as-of', join(dir, 'as_of.txt'), '--output', output, '--view'], { encoding: 'utf8' });
+  assert.ok(ran.includes('Matches') && ran.includes('matched: manual 1'));
+  assert.deepStrictEqual(JSON.parse(readFileSync(output, 'utf8')), JSON.parse(readFileSync(join(dir, 'expected_report.json'), 'utf8')));
+
+  try {
+    execFileSync(process.execPath, [bin, 'view', join(dir, 'ours.csv')], { stdio: 'pipe' });
+    assert.fail('expected exit 1');
+  } catch (error) {
+    const { status, stderr } = error as { status: number; stderr: Buffer };
+    assert.equal(status, 1);
+    assert.ok(stderr.toString().includes('not JSON'));
+  }
+});

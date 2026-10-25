@@ -156,6 +156,7 @@ Scope: CLI only. Backend / frontend stack is open and may differ.
 | S3 | Repo structure | monorepo / single package / separate repos | monorepo in this folder (`packages/core`, `apps/cli`, later `apps/api`, `apps/web`) | One pure engine reused by all entry points | DECIDED |
 | S4 | CLI entry | `bin` field / wrapper script | `package.json` `bin: { recon }` | Puts `recon` on PATH via `npm link` / `npm i -g .` | DECIDED |
 | S5 | Workspace tool | npm workspaces / pnpm | npm workspaces | Ships with Node; graders need no extra install | DECIDED |
+| S6 | Engine vs file formats | engine reads CSV / engine takes records + readers + writers | `engine.ts` takes records (`Transaction[]`), pins, as_of; `readers/` turn a source into records (picked by file extension, unknown → csv); `writers/` turn a report into text (json, pretty). `reconcile()` = CSV reader + engine | New input or output format = one file + one registry line; matching rules do not change. Backend / frontend can call the engine with records | DECIDED |
 
 ### CLI
 
@@ -165,6 +166,7 @@ Scope: CLI only. Backend / frontend stack is open and may differ.
 | C2 | Bad `--as-of` format | exit non-zero | `fatal` exception; listed with C1, exit 1 | Same as C1 | DECIDED |
 | C3 | `--as-of` given as a file | value only / value or file path | value or path to a file with one value (BOM, blank lines, spaces ignored; more lines → `fatal` C2). Valid value wins; else read as file | User wants both. Brief contract (value) still works | DECIDED |
 | C4 | Short form for a folder | flags only / `recon run DIR` | `recon run DIR`: reads `DIR/ours.csv`, `theirs.csv`, `manual.csv`, `as_of.txt`, writes `DIR/report.json`; any flag overrides its default | User wants one short command per example. Brief contract (flags) still works | DECIDED |
+| C5 | View the result (Q18) | none / pretty CLI / web UI | pretty CLI: `recon view REPORT.json` and `recon run … --view`; first 50 rows per table, `--all` for every row; colors on a terminal only (`NO_COLOR` turns them off); with `--view` exceptions shown in a table instead of stderr | Brief minimum; no server needed. Web UI later with a backend | DECIDED |
 
 ### Exception model (not-happy path)
 

@@ -3,6 +3,12 @@ import type { D } from './helpers/numbers.ts';
 
 export type Side = 'ours' | 'theirs';
 
+// One input: a name (shown in exceptions, e.g. "ours.csv") and its content. Readers turn it into records.
+export interface Source {
+  name: string;
+  text: string;
+}
+
 export type ColumnValue = string | number;
 
 export interface Transaction {

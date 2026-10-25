@@ -4,9 +4,13 @@ import type { Exception } from '../exceptions.ts';
 // A3: no fraction or 1–9 fraction digits, UTC "Z" only.
 const AS_OF_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/;
 
-export type AsOfResult =
-  | { ok: true; instant: Temporal.Instant; text: string }
-  | { ok: false; exception: Exception };
+// instant: full precision, for the filter. text: always .sssZ, for the report (X2).
+export interface AsOf {
+  instant: Temporal.Instant;
+  text: string;
+}
+
+export type AsOfResult = ({ ok: true } & AsOf) | { ok: false; exception: Exception };
 
 export function readAsOf(input: string): AsOfResult {
   const fail = (): AsOfResult => ({
