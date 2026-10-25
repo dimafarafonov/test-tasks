@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { run, kinds, codes } from '../helpers.ts';
+import { run, kinds, codes } from '../runEngine.ts';
 
 test('manual pin wins over exact; unknown, late, reused and repeated pins are skipped with a warning (DECISIONS Q8, M1-M4)', () => {
   const r = run(

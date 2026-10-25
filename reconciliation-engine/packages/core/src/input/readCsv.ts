@@ -1,8 +1,8 @@
 import { parse } from 'csv-parse/sync';
-import type { Issue } from '../issue.ts';
+import type { Exception } from '../exceptions.ts';
 
 export interface CsvSource {
-  name: string; // shown in issues, e.g. "ours.csv"
+  name: string; // shown in exceptions, e.g. "ours.csv"
   text: string;
 }
 
@@ -14,10 +14,10 @@ export interface Row {
   get(column: string): string | undefined;
 }
 
-type TableResult = { ok: true; header: string[]; rows: Row[] } | { ok: false; issue: Issue };
+type CsvResult = { ok: true; header: string[]; rows: Row[] } | { ok: false; exception: Exception };
 
 // I6: standard CSV parser. Header names trimmed; first column with a name wins.
-export function readTable(source: CsvSource, required: readonly string[]): TableResult {
+export function readCsv(source: CsvSource, required: readonly string[]): CsvResult {
   let parsed: { record: string[]; info: { lines: number } }[];
   try {
     parsed = parse(source.text, {
@@ -28,7 +28,7 @@ export function readTable(source: CsvSource, required: readonly string[]): Table
     }) as unknown as typeof parsed;
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    return { ok: false, issue: { code: 'I6', level: 'fatal', source: source.name, message: `CSV syntax error: ${reason}` } };
+    return { ok: false, exception: { code: 'I6', level: 'fatal', source: source.name, message: `CSV syntax error: ${reason}` } };
   }
 
   const [first, ...data] = parsed;
@@ -37,7 +37,7 @@ export function readTable(source: CsvSource, required: readonly string[]): Table
   if (missing.length > 0) {
     return {
       ok: false,
-      issue: { code: 'I2', level: 'fatal', source: source.name, message: `missing column(s): ${missing.join(', ')}` },
+      exception: { code: 'I2', level: 'fatal', source: source.name, message: `missing column(s): ${missing.join(', ')}` },
     };
   }
 

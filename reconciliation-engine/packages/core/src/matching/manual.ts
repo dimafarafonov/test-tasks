@@ -1,19 +1,19 @@
-import type { Issue } from '../issue.ts';
-import { toMatch } from '../output/match.ts';
-import type { Match, Pin, TxRecord } from '../types.ts';
+import type { Exception } from '../exceptions.ts';
+import { matchEntry } from '../output/matchEntry.ts';
+import type { Match, Pin, Transaction } from '../types.ts';
 
 // Q8: pins win, no field checks. M1–M4 problems skip the pin.
 // all*: every parsed record (M1 "not found"); free*: records within as_of (M2).
 export function matchManual(
   source: string,
   pins: Pin[],
-  allOurs: TxRecord[],
-  allTheirs: TxRecord[],
-  freeOurs: TxRecord[],
-  freeTheirs: TxRecord[],
-  issues: Issue[],
+  allOurs: Transaction[],
+  allTheirs: Transaction[],
+  freeOurs: Transaction[],
+  freeTheirs: Transaction[],
+  exceptions: Exception[],
 ): Match[] {
-  const index = (records: TxRecord[]) => new Map(records.map((r) => [r.id, r]));
+  const index = (records: Transaction[]) => new Map(records.map((r) => [r.id, r]));
   const [allO, allT, freeO, freeT] = [index(allOurs), index(allTheirs), index(freeOurs), index(freeTheirs)];
   const seenPairs = new Set<string>();
   const pinnedOurs = new Set<string>();
@@ -22,7 +22,7 @@ export function matchManual(
 
   for (const pin of pins) {
     const skip = (code: string, message: string) =>
-      issues.push({ code, level: 'skip', source, row: pin.row, message: `pin ${pin.oursId},${pin.theirsId} skipped: ${message}` });
+      exceptions.push({ code, level: 'skip', source, row: pin.row, message: `pin ${pin.oursId},${pin.theirsId} skipped: ${message}` });
 
     const pairKey = JSON.stringify([pin.oursId, pin.theirsId]);
     if (seenPairs.has(pairKey)) {
@@ -51,7 +51,7 @@ export function matchManual(
     }
     pinnedOurs.add(o.id);
     pinnedTheirs.add(t.id);
-    matches.push(toMatch('manual', o, t));
+    matches.push(matchEntry('manual', o, t));
   }
   return matches;
 }

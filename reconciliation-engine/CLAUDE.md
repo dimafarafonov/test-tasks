@@ -47,7 +47,7 @@ Each record matches at most once. Only records with `timestamp <= as_of`.
 - Language / stack: Node.js >= 24 + TypeScript. `temporal-polyfill` (timestamps), `decimal.js` (amounts).
 - Architecture: monorepo in this folder. `packages/core` (pure engine), `apps/cli`. Later `apps/api`, `apps/web`.
 - Currency: identity field. No FX conversion. `fx_rate` not used in matching (DECISIONS R3, E2).
-- Thresholds (config, DECISIONS "Thresholds config"): rule amount ≤ 0.02, time ≤ 2 s; fuzzy similarity ≥ 0.75, amount ≤ 0.10, time ≤ 2 s.
+- Limits (settings, DECISIONS "Limits config"): rule amount ≤ 0.02, time ≤ 2 s; fuzzy similarity ≥ 0.75, amount ≤ 0.10, time ≤ 2 s.
 - Extended shape: `party_email` + `currency` must be equal (exact, rule-based); `quantity`, `price_per_share` not used.
-- Not-happy path: Issue model (`fatal` / `skip`), DECISIONS "Issue model".
+- Not-happy path: Exception model (`fatal` / `skip`), DECISIONS "Exception model".
 - CLI extras: `--as-of` value or file (C3), `recon run DIR` (C4), run time printed. Scripts: `examples`, `generate:example`, `doctor` (README "Commands").

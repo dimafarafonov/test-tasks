@@ -4,7 +4,7 @@ import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { parseAsOfFile } from '../src/asOfFile.ts';
+import { readAsOfFile } from '../src/asOfFile.ts';
 
 const root = join(import.meta.dirname, '../../..');
 const bin = join(root, 'apps/cli/bin/recon.js');
@@ -43,10 +43,10 @@ test('bad arguments: all problems are listed at once, exit code 1 (DECISIONS C1,
 });
 
 test('as_of file: one value, spaces and blank lines ignored; empty, many lines or bad format stop the run (DECISIONS C2, C3)', () => {
-  assert.deepEqual(parseAsOfFile('a', '\uFEFF\n 2026-05-01T23:59:59.999Z \r\n\n'), { ok: true, value: '2026-05-01T23:59:59.999Z' });
+  assert.deepEqual(readAsOfFile('a', '\uFEFF\n 2026-05-01T23:59:59.999Z \r\n\n'), { ok: true, value: '2026-05-01T23:59:59.999Z' });
   for (const text of ['', '\n \n', '2026-05-01T00:00:00Z\n2026-05-02T00:00:00Z', '2026-05-01']) {
-    const result = parseAsOfFile('a', text);
-    assert.ok(!result.ok && result.issue.code === 'C2', JSON.stringify(text));
+    const result = readAsOfFile('a', text);
+    assert.ok(!result.ok && result.exception.code === 'C2', JSON.stringify(text));
   }
 });
 

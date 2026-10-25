@@ -1,17 +1,17 @@
-import { compareIds } from '../lib/compare.ts';
-import { D, secondsToNanos } from '../lib/decimal.ts';
-import { toMatch } from '../output/match.ts';
-import type { Match, MatchKind, TxRecord } from '../types.ts';
+import { compareIds } from '../helpers/sortById.ts';
+import { D, secondsToNanos } from '../helpers/numbers.ts';
+import { matchEntry } from '../output/matchEntry.ts';
+import type { Match, MatchKind, Transaction } from '../types.ts';
 
 // Sort keys of one candidate pair, ascending: best first.
 export type SortKeys = (number | bigint | string | D)[];
 
 // Returns the sort keys of a pair that may match, or null when it may not.
-export type Score = (ours: TxRecord, theirs: TxRecord) => SortKeys | null;
+export type Score = (ours: Transaction, theirs: Transaction) => SortKeys | null;
 
 interface Candidate {
-  ours: TxRecord;
-  theirs: TxRecord;
+  ours: Transaction;
+  theirs: Transaction;
   keys: SortKeys;
 }
 
@@ -32,9 +32,9 @@ function compareKeys(a: SortKeys, b: SortKeys): number {
 // Ties go by ours_id, then theirs_id (E3). windowSeconds: score only pairs at most this far
 // apart in time. Pairs outside the window must score null, so the result is the same as
 // scoring every pair.
-export function runMatchKind(kind: MatchKind, ours: TxRecord[], theirs: TxRecord[], score: Score, windowSeconds?: string): Match[] {
+export function runMatchKind(kind: MatchKind, ours: Transaction[], theirs: Transaction[], score: Score, windowSeconds?: string): Match[] {
   const candidates: Candidate[] = [];
-  const add = (o: TxRecord, t: TxRecord) => {
+  const add = (o: Transaction, t: Transaction) => {
     const keys = score(o, t);
     if (keys) candidates.push({ ours: o, theirs: t, keys: [...keys, o.id, t.id] });
   };
@@ -69,7 +69,7 @@ export function runMatchKind(kind: MatchKind, ours: TxRecord[], theirs: TxRecord
     if (usedOurs.has(o.id) || usedTheirs.has(t.id)) continue;
     usedOurs.add(o.id);
     usedTheirs.add(t.id);
-    matches.push(toMatch(kind, o, t));
+    matches.push(matchEntry(kind, o, t));
   }
   return matches;
 }

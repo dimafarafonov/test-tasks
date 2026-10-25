@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { editDistance, similarity } from '../../src/lib/similarity.ts';
+import { editDistance, similarity } from '../../src/helpers/textSimilarity.ts';
 
 test('fuzzy: two swapped neighbor letters count as one typo (DECISIONS F2)', () => {
   assert.equal(editDistance('alice', 'alcie'), 1);

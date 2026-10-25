@@ -49,7 +49,7 @@ id,amount,timestamp,memo
 o-001,100.00,2026-04-01T10:00:00.000Z,coffee
 ```
 
-Optional extra columns: `currency,quantity,price_per_share,fx_rate,party_email`. Each one is used when the file has it. To add or rename a column, edit the field schema: [packages/core/src/config/fields.ts](packages/core/src/config/fields.ts). All options with an example: [examples/fields.example.ts](examples/fields.example.ts).
+Optional extra columns: `currency,quantity,price_per_share,fx_rate,party_email`. Each one is used when the file has it. To add or rename a column, edit the field schema: [packages/core/src/settings/columns.ts](packages/core/src/settings/columns.ts). All options with an example: [examples/columns.example.ts](examples/columns.example.ts).
 
 `manual.csv` (pairs to force; may have no rows):
 
@@ -69,7 +69,7 @@ Each record matches at most once. Match kinds run in this order:
 | `rule_based` | Amount diff ≤ 0.02, time diff ≤ 2 s, same party fields. |
 | `fuzzy` | Similar memo (and `party_email`), amount diff ≤ 0.10, time diff ≤ 2 s, same currency. |
 
-Limits: [packages/core/src/config/thresholds.ts](packages/core/src/config/thresholds.ts).
+Limits: [packages/core/src/settings/limits.ts](packages/core/src/settings/limits.ts).
 
 ## Output
 
@@ -112,13 +112,33 @@ The engine is `packages/core/src`. Folders follow the path of a record: read →
 
 ```
 reconcile.ts      pipeline only: input → as_of filter → manual → other match kinds → report
-input/            reading files: CSV table, ours / theirs rows, manual.csv, as_of
-matching/         one file per match kind: manual, exact, ruleBased, fuzzy
-                  order.ts (kind order), party.ts (columns that must be equal),
-                  greedy.ts (best pair first, time window), diff.ts (amount / time diff)
-output/           report.json: diffs, unmatched echo, sorting and summary
-config/           thresholds.ts (limits), fields.ts (extra columns)
-lib/              generic helpers: decimal, text similarity, id order
+exceptions.ts     problems found in the input (fatal / skip)
+types.ts          shared types: Transaction, Match, Report
+
+input/            reading files
+  readCsv.ts            any CSV file: header, rows
+  readTransactions.ts   ours.csv / theirs.csv rows, extra columns
+  readManual.ts         manual.csv rows
+  readAsOf.ts           the as_of value
+
+matching/         one file per match kind
+  manual.ts, exact.ts, ruleBased.ts, fuzzy.ts
+  matchOrder.ts         the order the kinds run in
+  sameParty.ts          columns that must be equal (currency, email ...)
+  pickBest.ts           best pair first, time window
+  difference.ts         amount / time difference, limit check
+
+output/           report.json
+  matchEntry.ts         one line in "matches" (diffs, rounding)
+  unmatchedEntry.ts     one line in "unmatched_*"
+  buildReport.ts        sorting and summary
+
+settings/
+  limits.ts             0.02, 2 s, 0.75 ...
+  columns.ts            extra columns (type, match rule, aliases)
+
+helpers/          generic, no business rules
+  numbers.ts, textSimilarity.ts, sortById.ts
 ```
 
 Tests mirror it: `packages/core/test/matching/exact.test.ts` tests `src/matching/exact.ts`. Each test name ends with a DECISIONS code, for example `(DECISIONS R2)`.
@@ -128,13 +148,13 @@ Tests mirror it: `packages/core/test/matching/exact.test.ts` tests `src/matching
 | Symptom | Look in |
 |---|---|
 | Row skipped, column not read, bad number accepted | `input/` |
-| Wrong `as_of` filter | `input/asOf.ts`, `reconcile.ts` step 2 |
+| Wrong `as_of` filter | `input/readAsOf.ts`, `reconcile.ts` step 2 |
 | Pin ignored or wrong | `matching/manual.ts` |
-| Wrong kind, or a pair should match but does not | `matching/<kind>.ts`, then `config/thresholds.ts` |
-| Pair blocked by currency / email / other column | `matching/party.ts`, `config/fields.ts` |
-| Wrong pair picked among many candidates | `matching/greedy.ts` (sort keys), `matching/<kind>.ts` (score) |
-| Wrong diff, rounding, `-0.00` | `output/match.ts`, `lib/decimal.ts` |
-| Wrong order, summary or unmatched fields | `output/report.ts`, `output/echo.ts` |
+| Wrong kind, or a pair should match but does not | `matching/<kind>.ts`, then `settings/limits.ts` |
+| Pair blocked by currency / email / other column | `matching/sameParty.ts`, `settings/columns.ts` |
+| Wrong pair picked among many candidates | `matching/pickBest.ts` (sort keys), `matching/<kind>.ts` (score) |
+| Wrong diff, rounding, `-0.00` | `output/matchEntry.ts`, `helpers/numbers.ts` |
+| Wrong order, summary or unmatched fields | `output/buildReport.ts`, `output/unmatchedEntry.ts` |
 
 Steps: test name → DECISIONS code (what the rule is) → file from the table.
 

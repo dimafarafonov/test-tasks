@@ -1,5 +1,5 @@
-// DECISIONS "Thresholds config". All limits inclusive.
-export interface Thresholds {
+// DECISIONS "Limits config". All limits inclusive.
+export interface Limits {
   ruleAmount: string;
   ruleTimeSeconds: string;
   fuzzySimilarity: string;
@@ -8,7 +8,7 @@ export interface Thresholds {
 }
 
 // Strings, not numbers: parsed by decimal.js, so no float error at the limit.
-export const DEFAULT_THRESHOLDS: Readonly<Thresholds> = Object.freeze({
+export const DEFAULT_LIMITS: Readonly<Limits> = Object.freeze({
   ruleAmount: '0.02',
   ruleTimeSeconds: '2',
   fuzzySimilarity: '0.75',

@@ -1,5 +1,5 @@
 // Field schema showcase: every extra column, written out in full. Reference only, not used by the engine.
-// The engine uses DEFAULT_FIELDS (packages/core/src/config/fields.ts). Copy rows from here to extend it.
+// The engine uses DEFAULT_COLUMNS (packages/core/src/settings/columns.ts). Copy rows from here to extend it.
 //
 // column:  name in the header (and in the report).
 // type:    'text'    → trimmed string
@@ -11,9 +11,9 @@
 // aliases: other header names for the same column (optional)
 //
 // Row order = column order in the report.
-import type { FieldSpec } from '../packages/core/src/index.ts';
+import type { ColumnSpec } from '../packages/core/src/index.ts';
 
-const fields: FieldSpec[] = [
+const columns: ColumnSpec[] = [
   { column: 'currency', type: 'text', match: 'equal' },
   { column: 'quantity', type: 'integer', match: 'none' },
   { column: 'price_per_share', type: 'decimal', match: 'none' },

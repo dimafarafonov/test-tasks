@@ -111,7 +111,7 @@ const match = (kind: string, [o, t]: [Rec, Rec]) => ({
   amount_diff: money(o.cents - t.cents),
   timestamp_diff_seconds: seconds(o.ms - t.ms),
 });
-const echo = (r: Rec) => ({ id: r.id, amount: money(r.cents), timestamp: iso(r.ms) });
+const unmatchedEntry = (r: Rec) => ({ id: r.id, amount: money(r.cents), timestamp: iso(r.ms) });
 const byOurs = (a: [Rec, Rec], b: [Rec, Rec]) => byId(a[0], b[0]);
 
 const expected = {
@@ -125,8 +125,8 @@ const expected = {
     unmatched_theirs: unmatchedTheirs.length,
   },
   matches: [...[...pins].sort(byOurs).map((p) => match('manual', p)), ...[...exact].sort(byOurs).map((p) => match('exact', p))],
-  unmatched_ours: [...unmatchedOurs].sort(byId).map(echo),
-  unmatched_theirs: [...unmatchedTheirs].sort(byId).map(echo),
+  unmatched_ours: [...unmatchedOurs].sort(byId).map(unmatchedEntry),
+  unmatched_theirs: [...unmatchedTheirs].sort(byId).map(unmatchedEntry),
 };
 
 const dir = join(import.meta.dirname, '..', 'examples', name);

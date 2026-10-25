@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { run, codes } from '../helpers.ts';
+import { run, codes } from '../runEngine.ts';
 
 test('records with timestamp after as_of are left out of the report (DECISIONS A1)', () => {
   const r = run(['o1,1.00,2026-05-02T00:00:00Z,x'], ['t1,1.00,2026-05-01T00:00:00Z,x']);

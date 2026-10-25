@@ -1,10 +1,10 @@
-export { DEFAULT_FIELDS } from './config/fields.ts';
-export type { FieldMatch, FieldSpec, FieldType } from './config/fields.ts';
-export { DEFAULT_THRESHOLDS } from './config/thresholds.ts';
-export type { Thresholds } from './config/thresholds.ts';
-export { parseAsOf } from './input/asOf.ts';
-export type { CsvSource } from './input/table.ts';
-export type { Issue, IssueLevel } from './issue.ts';
+export { DEFAULT_COLUMNS } from './settings/columns.ts';
+export type { ColumnMatch, ColumnSpec, ColumnType } from './settings/columns.ts';
+export { DEFAULT_LIMITS } from './settings/limits.ts';
+export type { Limits } from './settings/limits.ts';
+export { readAsOf } from './input/readAsOf.ts';
+export type { CsvSource } from './input/readCsv.ts';
+export type { Exception, ExceptionLevel } from './exceptions.ts';
 export { reconcile } from './reconcile.ts';
 export type { ReconcileInput, ReconcileOptions, ReconcileResult } from './reconcile.ts';
-export type { EchoRecord, FieldValue, Match, MatchKind, Report, Summary } from './types.ts';
+export type { EchoRecord, ColumnValue, Match, MatchKind, Report, Summary } from './types.ts';

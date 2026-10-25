@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { run, kinds } from '../helpers.ts';
+import { run, kinds } from '../runEngine.ts';
 
 test('rule-based: amount diff 0.02 and time diff 2 s still match; 0.03 does not (DECISIONS R1, R2)', () => {
   const r = run(

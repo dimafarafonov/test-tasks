@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { EXT, run, kinds } from '../helpers.ts';
+import { EXT, run, kinds } from '../runEngine.ts';
 
 test('fuzzy: matches a memo typo and a party_email typo; different currency never matches (DECISIONS F3, F7)', () => {
   const r = run(

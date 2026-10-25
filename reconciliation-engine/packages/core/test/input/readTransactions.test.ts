@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { SIMPLE, run, kinds, codes } from '../helpers.ts';
+import { SIMPLE, run, kinds, codes } from '../runEngine.ts';
 
 test('timestamps with different fraction digits are compared as the same moment (DECISIONS I4)', () => {
   const r = run(['o1,5.00,2026-05-01T10:00:00Z,'], ['t1,5.00,2026-05-01T10:00:00.000000Z,']);
@@ -14,7 +14,7 @@ test('duplicate id and bad rows are skipped with a warning; the run continues (D
   );
   assert.deepEqual(r.report!.unmatched_ours.map((e) => e.amount), ['5.00']);
   assert.deepEqual(codes(r), ['I7', 'I8', 'I8', 'I8']);
-  assert.equal(r.issues[0]!.row, 3);
+  assert.equal(r.exceptions[0]!.row, 3);
 });
 
 test('missing core column stops the run; only some extra columns: each one found is used and echoed (DECISIONS I2)', () => {

@@ -1,27 +1,27 @@
 import { Temporal } from 'temporal-polyfill';
-import type { FieldSpec } from '../config/fields.ts';
-import type { Issue } from '../issue.ts';
-import { D, decimalKey } from '../lib/decimal.ts';
-import type { FieldValue, TxRecord } from '../types.ts';
-import { DECIMAL_PATTERN, INTEGER_PATTERN, readTable, type CsvSource, type Row } from './table.ts';
+import type { ColumnSpec } from '../settings/columns.ts';
+import type { Exception } from '../exceptions.ts';
+import { D, decimalKey } from '../helpers/numbers.ts';
+import type { ColumnValue, Transaction } from '../types.ts';
+import { DECIMAL_PATTERN, INTEGER_PATTERN, readCsv, type CsvSource, type Row } from './readCsv.ts';
 
 const CORE_COLUMNS = ['id', 'amount', 'timestamp', 'memo'] as const;
 
-export interface SideResult {
-  records: TxRecord[];
-  issues: Issue[];
-  columns: string[]; // schema columns found in the header (I2)
+export interface TransactionsResult {
+  records: Transaction[];
+  exceptions: Exception[];
+  columnNames: string[]; // schema columns found in the header (I2)
 }
 
 // A schema column and the header name it is read from (the column itself or an alias).
 interface ColumnSource {
-  spec: FieldSpec;
+  spec: ColumnSpec;
   header: string;
 }
 
-export function parseSide(source: CsvSource, specs: readonly FieldSpec[]): SideResult {
-  const table = readTable(source, CORE_COLUMNS);
-  if (!table.ok) return { records: [], issues: [table.issue], columns: [] };
+export function readTransactions(source: CsvSource, specs: readonly ColumnSpec[]): TransactionsResult {
+  const table = readCsv(source, CORE_COLUMNS);
+  if (!table.ok) return { records: [], exceptions: [table.exception], columnNames: [] };
 
   // I2: each schema column counts on its own. The column name wins over an alias.
   const columns: ColumnSource[] = [];
@@ -30,18 +30,18 @@ export function parseSide(source: CsvSource, specs: readonly FieldSpec[]): SideR
     if (header !== undefined) columns.push({ spec, header });
   }
 
-  const issues: Issue[] = [];
-  const records: TxRecord[] = [];
+  const exceptions: Exception[] = [];
+  const records: Transaction[] = [];
   const seen = new Set<string>();
   for (const row of table.rows) {
-    const result = parseRecord(row, columns);
+    const result = readRow(row, columns);
     if (typeof result === 'string') {
       const id = row.get('id')?.trim() || undefined;
-      issues.push({ code: 'I8', level: 'skip', source: source.name, row: row.line, id, message: `row skipped: ${result}` });
+      exceptions.push({ code: 'I8', level: 'skip', source: source.name, row: row.line, id, message: `row skipped: ${result}` });
       continue;
     }
     if (seen.has(result.id)) {
-      issues.push({
+      exceptions.push({
         code: 'I7',
         level: 'skip',
         source: source.name,
@@ -54,11 +54,11 @@ export function parseSide(source: CsvSource, specs: readonly FieldSpec[]): SideR
     seen.add(result.id);
     records.push(result);
   }
-  return { records, issues, columns: columns.map((c) => c.spec.column) };
+  return { records, exceptions, columnNames: columns.map((c) => c.spec.column) };
 }
 
 // Returns the record, or the reason the row is bad (I8).
-function parseRecord(row: Row, columns: readonly ColumnSource[]): TxRecord | string {
+function readRow(row: Row, columns: readonly ColumnSource[]): Transaction | string {
   const id = row.get('id')?.trim();
   const amountText = row.get('amount')?.trim();
   const timestampText = row.get('timestamp')?.trim();
@@ -76,26 +76,26 @@ function parseRecord(row: Row, columns: readonly ColumnSource[]): TxRecord | str
     return `bad timestamp "${timestampText}"`;
   }
 
-  const record: TxRecord = { id, row: row.line, amountText, amount: new D(amountText), timestampText, instant, memo, fields: {}, keys: {} };
+  const record: Transaction = { id, row: row.line, amountText, amount: new D(amountText), timestampText, instant, memo, extra: {}, matchKeys: {} };
   for (const { spec, header } of columns) {
     const text = row.get(header)?.trim();
     if (text === undefined) return 'missing field(s)';
-    const value = parseField(spec, text);
+    const value = readValue(spec, text);
     if (value === undefined) return `bad ${spec.column} "${text}"`;
-    record.fields[spec.column] = value.echo;
-    if (spec.match !== 'none') record.keys[spec.column] = value.key;
+    record.extra[spec.column] = value.output;
+    if (spec.match !== 'none') record.matchKeys[spec.column] = value.key;
   }
   return record;
 }
 
 // undefined when the text does not fit the type.
-function parseField(spec: FieldSpec, text: string): { echo: FieldValue; key: string } | undefined {
+function readValue(spec: ColumnSpec, text: string): { output: ColumnValue; key: string } | undefined {
   switch (spec.type) {
     case 'text':
-      return { echo: text, key: text };
+      return { output: text, key: text };
     case 'integer':
-      return INTEGER_PATTERN.test(text) ? { echo: Number(text), key: String(Number(text)) } : undefined;
+      return INTEGER_PATTERN.test(text) ? { output: Number(text), key: String(Number(text)) } : undefined;
     case 'decimal':
-      return DECIMAL_PATTERN.test(text) ? { echo: text, key: decimalKey(new D(text)) } : undefined;
+      return DECIMAL_PATTERN.test(text) ? { output: text, key: decimalKey(new D(text)) } : undefined;
   }
 }

@@ -1,9 +1,9 @@
-import { nanosToSeconds, toFixed } from '../lib/decimal.ts';
-import { diff } from '../matching/diff.ts';
-import type { Match, MatchKind, TxRecord } from '../types.ts';
+import { nanosToSeconds, toFixed } from '../helpers/numbers.ts';
+import { diff } from '../matching/difference.ts';
+import type { Match, MatchKind, Transaction } from '../types.ts';
 
 // Q16: ours − theirs. O1: never "-0.00". O3: round half away from zero.
-export function toMatch(kind: MatchKind, ours: TxRecord, theirs: TxRecord): Match {
+export function matchEntry(kind: MatchKind, ours: Transaction, theirs: Transaction): Match {
   const { amount, nanos } = diff(ours, theirs);
   return {
     kind,

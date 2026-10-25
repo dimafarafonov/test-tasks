@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { reconcile, type ReconcileInput } from '../../src/index.ts';
-import { SIMPLE, EXT, AS_OF, run, kinds } from '../helpers.ts';
+import { SIMPLE, EXT, AS_OF, run, kinds } from '../runEngine.ts';
 
 test('extended shape: different currency or party_email blocks exact and rule-based match (DECISIONS E1, E2)', () => {
   const r = run(
@@ -18,7 +18,7 @@ test('a match column on one side only is not compared, with a warning; a renamed
     theirsHeader: `${SIMPLE},email`,
   });
   assert.deepEqual(kinds(r), ['exact:o1-t1']);
-  assert.deepEqual(r.issues.map((i) => `${i.code} ${i.source}: ${i.message}`), [
+  assert.deepEqual(r.exceptions.map((i) => `${i.code} ${i.source}: ${i.message}`), [
     'I3 ours.csv: column(s) party_email only in this file; not used in matching',
   ]);
 });

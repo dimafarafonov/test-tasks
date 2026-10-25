@@ -1,8 +1,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { parseAsOf, reconcile, type CsvSource, type Issue, type Report } from '@recon/core';
-import { parseAsOfFile, type AsOfFileResult } from './asOfFile.ts';
+import { readAsOf, reconcile, type CsvSource, type Exception, type Report } from '@recon/core';
+import { readAsOfFile, type AsOfFileResult } from './asOfFile.ts';
 
 const USAGE =
   'usage: recon run --ours OURS.csv --theirs THEIRS.csv --manual MANUAL.csv ' +
@@ -20,7 +20,7 @@ const DIR_DEFAULTS = {
 
 const FILE_OPTIONS = ['ours', 'theirs', 'manual'] as const;
 
-// Exit 0 on success (skip issues allowed), 1 on any fatal issue (DECISIONS Issue model).
+// Exit 0 on success (skip exceptions allowed), 1 on any fatal exception (DECISIONS Exception model).
 export async function main(argv: string[]): Promise<number> {
   const started = performance.now();
   let values: Record<string, string | undefined>;
@@ -38,20 +38,20 @@ export async function main(argv: string[]): Promise<number> {
       },
     }));
   } catch (error) {
-    return fail([cliIssue('args', error instanceof Error ? error.message : String(error))]);
+    return fail([cliException('args', error instanceof Error ? error.message : String(error))]);
   }
 
   // C1, C2: check every input first, report all problems in one pass.
-  const issues: Issue[] = [];
+  const exceptions: Exception[] = [];
   const [command, dir, ...extra] = positionals;
   if (command !== 'run' || extra.length > 0) {
-    issues.push(cliIssue('args', `expected "run" or "run DIR", got "${positionals.join(' ')}"`));
+    exceptions.push(cliException('args', `expected "run" or "run DIR", got "${positionals.join(' ')}"`));
   }
   if (dir) {
     for (const [name, file] of Object.entries(DIR_DEFAULTS)) values[name] ??= join(dir, file);
   }
   for (const name of [...FILE_OPTIONS, 'as-of', 'output'] as const) {
-    if (!values[name]) issues.push(cliIssue(`--${name}`, 'missing'));
+    if (!values[name]) exceptions.push(cliException(`--${name}`, 'missing'));
   }
 
   const sources: Partial<Record<(typeof FILE_OPTIONS)[number], CsvSource>> = {};
@@ -61,7 +61,7 @@ export async function main(argv: string[]): Promise<number> {
     try {
       sources[name] = { name: basename(path), text: await readFile(path, 'utf8') };
     } catch (error) {
-      issues.push(cliIssue(`--${name}`, `cannot read ${path}: ${errorCode(error)}`));
+      exceptions.push(cliException(`--${name}`, `cannot read ${path}: ${errorCode(error)}`));
     }
   }
 
@@ -69,22 +69,22 @@ export async function main(argv: string[]): Promise<number> {
   if (values['as-of']) {
     const resolved = await resolveAsOf(values['as-of']);
     if (resolved.ok) asOf = resolved.value;
-    else issues.push(resolved.issue);
+    else exceptions.push(resolved.exception);
   }
-  if (issues.length > 0 || !sources.ours || !sources.theirs || !sources.manual || !asOf || !values.output) {
-    return fail(issues);
+  if (exceptions.length > 0 || !sources.ours || !sources.theirs || !sources.manual || !asOf || !values.output) {
+    return fail(exceptions);
   }
 
   const result = reconcile({ ours: sources.ours, theirs: sources.theirs, manual: sources.manual, asOf });
-  if (!result.report) return fail(result.issues);
+  if (!result.report) return fail(result.exceptions);
 
   try {
     await writeFile(values.output, `${JSON.stringify(result.report, null, 2)}\n`, 'utf8');
   } catch (error) {
-    return fail([...result.issues, cliIssue('--output', `cannot write ${values.output}: ${errorCode(error)}`)]);
+    return fail([...result.exceptions, cliException('--output', `cannot write ${values.output}: ${errorCode(error)}`)]);
   }
 
-  printIssues(result.issues);
+  printExceptions(result.exceptions);
   const ms = (performance.now() - started).toFixed(1);
   process.stdout.write(`${summaryLine(result.report)} → ${values.output} (${ms} ms)\n`);
   return 0;
@@ -92,7 +92,7 @@ export async function main(argv: string[]): Promise<number> {
 
 // C3: --as-of is a value, or a path to a file with one value. A valid value wins.
 async function resolveAsOf(arg: string): Promise<AsOfFileResult> {
-  const parsed = parseAsOf(arg);
+  const parsed = readAsOf(arg);
   if (parsed.ok) return { ok: true, value: arg };
 
   let text: string;
@@ -101,13 +101,13 @@ async function resolveAsOf(arg: string): Promise<AsOfFileResult> {
   } catch (error) {
     return {
       ok: false,
-      issue: { ...parsed.issue, message: `${parsed.issue.message}; also not a readable file (${errorCode(error)})` },
+      exception: { ...parsed.exception, message: `${parsed.exception.message}; also not a readable file (${errorCode(error)})` },
     };
   }
-  return parseAsOfFile(arg, text);
+  return readAsOfFile(arg, text);
 }
 
-function cliIssue(source: string, message: string): Issue {
+function cliException(source: string, message: string): Exception {
   return { code: 'C1', level: 'fatal', source, message };
 }
 
@@ -116,18 +116,18 @@ function errorCode(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function fail(issues: Issue[]): number {
-  printIssues(issues);
+function fail(exceptions: Exception[]): number {
+  printExceptions(exceptions);
   process.stderr.write(`${USAGE}\n`);
   return 1;
 }
 
-function printIssues(issues: Issue[]): void {
-  for (const issue of issues) {
-    const where = [issue.source, issue.row !== undefined ? `row ${issue.row}` : '', issue.id ? `id ${issue.id}` : '']
+function printExceptions(exceptions: Exception[]): void {
+  for (const exception of exceptions) {
+    const where = [exception.source, exception.row !== undefined ? `row ${exception.row}` : '', exception.id ? `id ${exception.id}` : '']
       .filter(Boolean)
       .join(' ');
-    process.stderr.write(`${issue.level} ${issue.code} ${where}: ${issue.message}\n`);
+    process.stderr.write(`${exception.level} ${exception.code} ${where}: ${exception.message}\n`);
   }
 }
 

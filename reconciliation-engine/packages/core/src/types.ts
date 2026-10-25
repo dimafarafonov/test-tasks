@@ -1,11 +1,11 @@
 import type { Temporal } from 'temporal-polyfill';
-import type { D } from './lib/decimal.ts';
+import type { D } from './helpers/numbers.ts';
 
 export type Side = 'ours' | 'theirs';
 
-export type FieldValue = string | number;
+export type ColumnValue = string | number;
 
-export interface TxRecord {
+export interface Transaction {
   id: string;
   row: number;
   amountText: string;
@@ -13,10 +13,10 @@ export interface TxRecord {
   timestampText: string;
   instant: Temporal.Instant;
   memo: string;
-  // Schema columns in the file (config/fields.ts), in schema order. Values as echoed: trimmed text, integer as number.
-  fields: Record<string, FieldValue>;
+  // Extra columns in the file (settings/columns.ts), in schema order. Values as in the report: trimmed text, integer as number.
+  extra: Record<string, ColumnValue>;
   // Same columns, match != 'none' only: one text per value, so equal values compare equal ("1.0" = "1.00").
-  keys: Record<string, string>;
+  matchKeys: Record<string, string>;
 }
 
 export interface Pin {
@@ -35,12 +35,12 @@ export interface Match {
   timestamp_diff_seconds: string;
 }
 
-// Unmatched echo: input fields without memo (X3), then schema columns in the file (X4).
+// Unmatched entry: input fields without memo (X3), then extra columns in the file (X4).
 export interface EchoRecord {
   id: string;
   amount: string;
   timestamp: string;
-  [column: string]: FieldValue;
+  [column: string]: ColumnValue;
 }
 
 export interface Summary {

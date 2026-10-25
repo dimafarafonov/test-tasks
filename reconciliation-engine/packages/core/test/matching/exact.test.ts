@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { run, kinds } from '../helpers.ts';
+import { run, kinds } from '../runEngine.ts';
 
 test('exact: when many records are equal, pairs are made in id order (DECISIONS E3)', () => {
   const r = run(

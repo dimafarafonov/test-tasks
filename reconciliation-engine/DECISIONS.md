@@ -1,6 +1,6 @@
 # Decisions
 
-Decision log: Requirements and Exceptions. Codes (Q9, E3, C4 ...) are used in code comments, test names and issue codes.
+Decision log: Requirements and Exceptions. Codes (Q9, E3, C4 ...) are used in code comments, test names and exception codes.
 
 ## How we decide
 
@@ -65,15 +65,15 @@ Not stated in the brief or examples. Reasoned. We decide.
 |---|---|---|---|---|---|
 | I1 | `ours.csv` / `theirs.csv` is header-only | valid empty side / error | valid empty side (0 records) | Same rule the brief gives for header-only `manual.csv` | DECIDED |
 | I2 | Shape detection | whole shape / each column | by header, each schema column (I11) on its own: found → parsed, used, echoed; core col missing → `fatal`. All 5 or none (Q6) works as before | New or partial columns work without code change | DECIDED |
-| I3 | Column on one side only (simple vs extended, renamed column) | compare common fields / error | compare common fields only; match column on one side only → `skip` issue I3 (warning, run continues) | Simple; no crash. Warning shows a renamed column that would else turn a check off | DECIDED |
+| I3 | Column on one side only (simple vs extended, renamed column) | compare common fields / error | compare common fields only; match column on one side only → `skip` exception I3 (warning, run continues) | Simple; no crash. Warning shows a renamed column that would else turn a check off | DECIDED |
 | I4 | Timestamp precision varies (`.5Z`, no fraction, µs) | normalize to ms / keep full precision | keep full precision (`temporal-polyfill`, ns) | Brief allows sub-second; no precision loss; standard API, no own parser | DECIDED |
 | I5 | Amount math | decimal type / integer cents | decimal type (`decimal.js`) | Exact; built-in parse, format, rounding; readable | DECIDED |
 | I6 | Memo with comma / quotes / newline | standard CSV parser | standard CSV parser (`csv-parse`) | Handles quotes, commas, newlines correctly | DECIDED |
-| I7 | Duplicate ID in one file | error / keep first | keep first; skip later rows (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
-| I8 | Bad row (missing field, bad number) | error exit / skip + warn | skip row (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
+| I7 | Duplicate ID in one file | error / keep first | keep first; skip later rows (`skip` exception) | Generic exception model; run continues, exit 0 | DECIDED |
+| I8 | Bad row (missing field, bad number) | error exit / skip + warn | skip row (`skip` exception) | Generic exception model; run continues, exit 0 | DECIDED |
 | I9 | Extra unknown columns | ignore / echo / error | ignore; not echoed | Brief defines the fields; extra columns are noise | DECIDED |
 | I10 | Record timestamp with offset (`+02:00`) / empty `currency`, `party_email` | accept / skip row | accept (any ISO offset via Temporal; empty string is a value) | Not a broken row; matching still works on the parsed value | DECIDED |
-| I11 | Adding / renaming extra columns | code per column / field schema | field schema `packages/core/src/config/fields.ts`: one row per column (`type`: text / integer / decimal; `match`: equal / similar / none; `aliases`). Order = echo order | New column = one row; rename = alias. Match keys normalized (decimal by value) | DECIDED |
+| I11 | Adding / renaming extra columns | code per column / field schema | field schema `packages/core/src/settings/columns.ts`: one row per column (`type`: text / integer / decimal; `match`: equal / similar / none; `aliases`). Order = echo order | New column = one row; rename = alias. Match keys normalized (decimal by value) | DECIDED |
 
 ### as_of
 
@@ -87,10 +87,10 @@ Not stated in the brief or examples. Reasoned. We decide.
 
 | # | Case | Options | Decision | Why | Status |
 |---|---|---|---|---|---|
-| M1 | Pin ID does not exist | ignore / error / skip + warn | skip pin (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
-| M2 | Pinned record after `as_of` | ignore pin / keep pin | drop pin (`skip` issue) | `as_of` filter runs first; record does not exist in this run | DECIDED |
-| M3 | Same ID in two different pins | first wins / error / skip both | first wins; skip later pins (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
-| M4 | Identical pin row twice | dedupe / error | dedupe; skip duplicate (`skip` issue) | Generic Issue model; run continues, exit 0 | DECIDED |
+| M1 | Pin ID does not exist | ignore / error / skip + warn | skip pin (`skip` exception) | Generic exception model; run continues, exit 0 | DECIDED |
+| M2 | Pinned record after `as_of` | ignore pin / keep pin | drop pin (`skip` exception) | `as_of` filter runs first; record does not exist in this run | DECIDED |
+| M3 | Same ID in two different pins | first wins / error / skip both | first wins; skip later pins (`skip` exception) | Generic exception model; run continues, exit 0 | DECIDED |
+| M4 | Identical pin row twice | dedupe / error | dedupe; skip duplicate (`skip` exception) | Generic exception model; run continues, exit 0 | DECIDED |
 
 ### Exact
 
@@ -125,7 +125,7 @@ Not stated in the brief or examples. Reasoned. We decide.
 
 Extended shape: fuzzy also accepts a `party_email` typo (same F3 threshold). `currency` must be equal.
 
-### Thresholds config
+### Limits config
 
 One config object in `core`. CLI uses defaults. Real values come from past confirmed pairs + finance policy (next day).
 
@@ -161,17 +161,17 @@ Scope: CLI only. Backend / frontend stack is open and may differ.
 
 | # | Case | Options | Decision | Why | Status |
 |---|---|---|---|---|---|
-| C1 | Missing file / bad args | exit non-zero + message | `fatal` issue; check all inputs, list all problems, exit 1 | User fixes all in one pass | DECIDED |
-| C2 | Bad `--as-of` format | exit non-zero | `fatal` issue; listed with C1, exit 1 | Same as C1 | DECIDED |
+| C1 | Missing file / bad args | exit non-zero + message | `fatal` exception; check all inputs, list all problems, exit 1 | User fixes all in one pass | DECIDED |
+| C2 | Bad `--as-of` format | exit non-zero | `fatal` exception; listed with C1, exit 1 | Same as C1 | DECIDED |
 | C3 | `--as-of` given as a file | value only / value or file path | value or path to a file with one value (BOM, blank lines, spaces ignored; more lines → `fatal` C2). Valid value wins; else read as file | User wants both. Brief contract (value) still works | DECIDED |
 | C4 | Short form for a folder | flags only / `recon run DIR` | `recon run DIR`: reads `DIR/ours.csv`, `theirs.csv`, `manual.csv`, `as_of.txt`, writes `DIR/report.json`; any flag overrides its default | User wants one short command per example. Brief contract (flags) still works | DECIDED |
 
-### Issue model (not-happy path)
+### Exception model (not-happy path)
 
 Generic. Code collects problems; it does not throw at the first one. Entry point (CLI now, backend later) shows them.
 
 ```
-Issue { code: "I7" | "M1" | "C1" ..., level: "fatal" | "skip",
+Exception { code: "I7" | "M1" | "C1" ..., level: "fatal" | "skip",
         source: "ours.csv" | "--as-of" | ..., row?, id?, message }
 ```
 
@@ -181,6 +181,6 @@ Issue { code: "I7" | "M1" | "C1" ..., level: "fatal" | "skip",
 | `skip` | One item bad (I3, I7, I8, M1, M3, M4) | continue without item | 0 |
 
 - `code` = DECISIONS ID. New case = new code, no new path.
-- Core returns `{ report, issues }`. Core never prints.
-- CLI prints issues to console. Backend later returns them as JSON; frontend shows them.
+- Core returns `{ report, exceptions }`. Core never prints.
+- CLI prints exceptions to console. Backend later returns them as JSON; frontend shows them.
 - `report.json` schema unchanged (hidden suite compares it).
